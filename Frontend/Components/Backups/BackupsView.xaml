@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.Backups.BackupsView">
+    
+    <VerticalStackLayout Padding="20">
+        <Label Text="Backup" 
+               TextColor="#00e5ff" 
+               FontSize="32" 
+               FontAttributes="Bold"
+               Margin="0,0,0,20"/>
+        
+        <Label Text="Backup functionality will be implemented here." 
+               TextColor="White" 
+               FontSize="18"/>
+    </VerticalStackLayout>
+</ContentView> 

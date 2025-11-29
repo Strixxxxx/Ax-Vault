@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.Register.EmailStep">
+    
+    <VerticalStackLayout Spacing="15">
+        <Label 
+            Text="Enter your email"
+            FontSize="18"
+            TextColor="White"
+            Margin="0,10,0,5"/>
+            
+        <Label
+            Text="We'll use this to verify your account"
+            FontSize="14"
+            TextColor="LightGray" />
+            
+        <Entry 
+            x:Name="EmailEntry"
+            Placeholder="Email address"
+            PlaceholderColor="#7f7f7f"
+            BackgroundColor="#2a2a2a"
+            TextColor="White"
+            Keyboard="Email"
+            TextChanged="OnEmailChanged"
+            Margin="0,10,0,0"/>
+            
+        <Label
+            x:Name="ValidationMessage"
+            TextColor="#ff5555"
+            FontSize="12"
+            Margin="0,5,0,0"
+            IsVisible="False" />
+            
+        <Label
+            TextColor="LightGray"
+            FontSize="12"
+            Text="We'll send you a verification email to confirm your address." />
+    </VerticalStackLayout>
+    
+</ContentView> 

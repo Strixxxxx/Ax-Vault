@@ -1,0 +1,18 @@
+﻿<?xml version = "1.0" encoding = "UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:Frontend"
+             x:Class="Frontend.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Fonts -->
+            <FontImageSource x:Key="IconVisibility" FontFamily="MaterialIcons" Glyph="&#xe8f4;" Color="#7f7f7f" Size="24" />
+            <FontImageSource x:Key="IconVisibilityOff" FontFamily="MaterialIcons" Glyph="&#xe8f5;" Color="#00e5ff" Size="24" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

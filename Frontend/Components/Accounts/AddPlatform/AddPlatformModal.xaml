@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.Accounts.AddPlatform.AddPlatformModal"
+             Title="Add Platform"
+             BackgroundColor="#80000000">
+    
+    <Grid>
+        <!-- Overlay to darken the background -->
+        <BoxView Color="#80000000" 
+                 HorizontalOptions="Fill" 
+                 VerticalOptions="Fill"/>
+        
+        <!-- Modal Content -->
+        <Frame BackgroundColor="#1a1a1a" 
+               BorderColor="#333333"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               WidthRequest="400"
+               CornerRadius="10"
+               Padding="20"
+               HasShadow="True">
+            
+            <VerticalStackLayout Spacing="20">
+                <Label Text="Add New Platform" 
+                       TextColor="#00e5ff" 
+                       FontSize="24" 
+                       FontAttributes="Bold"
+                       HorizontalOptions="Center"/>
+                
+                <Label Text="Platform Name" 
+                       TextColor="White" 
+                       FontSize="16"/>
+                
+                <Entry x:Name="PlatformNameEntry" 
+                       Placeholder="Enter platform name" 
+                       PlaceholderColor="#666666"
+                       TextColor="White"
+                       BackgroundColor="#262626"/>
+                
+                <HorizontalStackLayout x:Name="ButtonsContainer" HorizontalOptions="Center" Spacing="10">
+                    <Button Text="Cancel" 
+                            BackgroundColor="#333333" 
+                            TextColor="White"
+                            CornerRadius="5"
+                            HeightRequest="40"
+                            WidthRequest="100"
+                            x:Name="CancelButton"/>
+                    
+                    <Button Text="Add Platform" 
+                            BackgroundColor="#00e5ff" 
+                            TextColor="Black"
+                            CornerRadius="5"
+                            HeightRequest="40"
+                            WidthRequest="150"
+                            x:Name="CreateButton"/>
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+        </Frame>
+    </Grid>
+</ContentPage> 

@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:dashboard="clr-namespace:Frontend.Components.Dashboard"
+             xmlns:accounts="clr-namespace:Frontend.Components.Accounts"
+             xmlns:backups="clr-namespace:Frontend.Components.Backups"
+             x:Class="Frontend.Components.Layout.MainLayout">
+
+    <Grid x:Name="MainGrid" ColumnDefinitions="Auto,Auto,*">
+        <!-- Sidebar -->
+        <Grid x:Name="Sidebar" 
+              Grid.Column="0" 
+              WidthRequest="250" 
+              BackgroundColor="#222222"
+              RowDefinitions="Auto,*,Auto">
+
+            <!-- Top section with toggle button, logo and title combined -->
+            <Grid Grid.Row="0" Padding="10,15">
+                <!-- Expanded View with toggle, logo and title in one row -->
+                <Grid x:Name="ExpandedTopSection" ColumnDefinitions="Auto,Auto,*" IsVisible="true">
+                    <!-- Toggle Button -->
+                    <Button Grid.Column="0"
+                            x:Name="ToggleSidebarButton"
+                            Text="≡"
+                            FontSize="20"
+                            WidthRequest="40"
+                            HeightRequest="40"
+                            Padding="0"
+                            BackgroundColor="Transparent"
+                            TextColor="#00e5ff"
+                            Clicked="OnToggleSidebarClicked"
+                            Margin="0,0,5,0"/>
+                    
+                    <!-- App Logo/Icon -->
+                    <Image Grid.Column="1"
+                           Source="silverwolf.png" 
+                           HeightRequest="40" 
+                           WidthRequest="40"
+                           Margin="0,0,5,0"/>
+                    
+                    <!-- App Name -->
+                    <Label Grid.Column="2"
+                           Text="Ax Vault" 
+                           TextColor="#00e5ff" 
+                           FontSize="22" 
+                           FontAttributes="Bold"
+                           VerticalOptions="Center"/>
+                </Grid>
+                
+                <!-- Collapsed View - only toggle button visible -->
+                <Grid x:Name="CollapsedTopSection" IsVisible="false" HorizontalOptions="Center">
+                    <!-- Toggle Button -->
+                    <Button x:Name="CollapsedToggleButton"
+                            Text="≡"
+                            FontSize="20"
+                            WidthRequest="40"
+                            HeightRequest="40"
+                            Padding="0"
+                            BackgroundColor="Transparent"
+                            TextColor="#00e5ff"
+                            Clicked="OnToggleSidebarClicked"/>
+                </Grid>
+            </Grid>
+
+            <!-- Collapsed Logo and Vertical Text - only visible when collapsed -->
+            <VerticalStackLayout Grid.Row="1"
+                                x:Name="CollapsedLogoView" 
+                                IsVisible="false" 
+                                HorizontalOptions="Center" 
+                                Spacing="5"
+                                VerticalOptions="Start"
+                                Margin="0,15,0,0">
+                <!-- App Logo/Icon -->
+                <Image Source="silverwolf.png" 
+                       HeightRequest="40" 
+                       WidthRequest="40"
+                       HorizontalOptions="Center"/>
+                
+                <!-- App Name - Vertical (each letter on its own line) -->
+                <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
+                    <Label Text="A" TextColor="#00e5ff" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="x" TextColor="#00e5ff" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text=" " TextColor="#00e5ff" FontSize="4" HorizontalOptions="Center"/>
+                    <Label Text="V" TextColor="#00e5ff" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="a" TextColor="#00e5ff" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="u" TextColor="#00e5ff" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="l" TextColor="#00e5ff" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                    <Label Text="t" TextColor="#00e5ff" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+
+            <!-- Content for expanded view (welcome card and navigation) -->
+            <Grid Grid.Row="1" x:Name="ExpandedContent" RowDefinitions="Auto,*" IsVisible="true">
+                <!-- User Welcome Card -->
+                <Border Grid.Row="0" 
+                       x:Name="WelcomeCard"
+                       Margin="15,15,15,20" 
+                       BackgroundColor="#333333" 
+                       StrokeShape="RoundRectangle 10"
+                       Padding="15"
+                       VerticalOptions="Start">
+                    <VerticalStackLayout>
+                        <Label Text="Welcome" 
+                               TextColor="LightGray" 
+                               FontSize="14"/>
+                        <Label x:Name="UsernameLabel" 
+                               Text="User" 
+                               TextColor="#00e5ff" 
+                               FontSize="18" 
+                               FontAttributes="Bold"/>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Navigation Menu -->
+                <VerticalStackLayout Grid.Row="1" 
+                                    x:Name="NavigationMenu" 
+                                    Spacing="5" 
+                                    Padding="15,0" 
+                                    VerticalOptions="Start"
+                                    Margin="0,10,0,0">
+                    <Button x:Name="DashboardButton"
+                            Text="Dashboard" 
+                            BackgroundColor="Transparent" 
+                            TextColor="White"
+                            HorizontalOptions="FillAndExpand"
+                            Clicked="OnDashboardClicked"/>
+                    
+                    <Button x:Name="AccountsButton"
+                            Text="Accounts" 
+                            BackgroundColor="Transparent" 
+                            TextColor="White"
+                            HorizontalOptions="FillAndExpand"
+                            Clicked="OnAccountsClicked"/>
+                    
+                    <Button x:Name="BackupButton"
+                            Text="Backup" 
+                            BackgroundColor="Transparent" 
+                            TextColor="White"
+                            HorizontalOptions="FillAndExpand"
+                            Clicked="OnBackupClicked"/>
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Logout Button -->
+            <Button Grid.Row="2"
+                   x:Name="LogoutButton"
+                   Text="Logout" 
+                   BackgroundColor="#333333" 
+                   TextColor="White"
+                   Margin="15,0,15,20"
+                   Clicked="OnLogoutClicked"/>
+        </Grid>
+
+        <!-- Neon Blue Light Divider -->
+        <Grid Grid.Column="1" WidthRequest="2" x:Name="NeonDivider">
+            <!-- Glowing Border Effect -->
+            <BoxView Color="#00e5ff" 
+                     HorizontalOptions="Center" 
+                     VerticalOptions="Fill" 
+                     WidthRequest="2"/>
+            
+            <!-- Glow Effect (Inner) -->
+            <BoxView Color="#00e5ff" 
+                     Opacity="0.4"
+                     HorizontalOptions="Center" 
+                     VerticalOptions="Fill" 
+                     WidthRequest="4" 
+                     Margin="0,-1,0,-1"/>
+                     
+            <!-- Glow Effect (Outer) -->
+            <BoxView Color="#00e5ff" 
+                     Opacity="0.2"
+                     HorizontalOptions="Center" 
+                     VerticalOptions="Fill" 
+                     WidthRequest="6" 
+                     Margin="0,-2,0,-2"/>
+        </Grid>
+
+        <!-- Content Area -->
+        <Grid x:Name="ContentArea" Grid.Column="2" BackgroundColor="#1a1a1a">
+            <!-- Dashboard Component -->
+            <dashboard:DashboardView x:Name="DashboardComponent" IsVisible="true" />
+            
+            <!-- Accounts Component -->
+            <accounts:AccountsView x:Name="AccountsComponent" IsVisible="false" />
+            
+            <!-- Backup Component -->
+            <backups:BackupsView x:Name="BackupsComponent" IsVisible="false" />
+        </Grid>
+    </Grid>
+</ContentView> 

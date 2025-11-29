@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.Accounts.AccountsView">
+    
+    <VerticalStackLayout Padding="20" Spacing="20">
+        <!-- Header with search and action buttons -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,20">
+            <Entry Grid.Column="0" 
+                   Placeholder="Search accounts..." 
+                   PlaceholderColor="#666666"
+                   TextColor="White"
+                   BackgroundColor="#262626"
+                   x:Name="SearchEntry"/>
+            
+            <HorizontalStackLayout Grid.Column="1" Spacing="10" HorizontalOptions="End">
+                <Button Text="Add" 
+                        BackgroundColor="#00e5ff" 
+                        TextColor="Black"
+                        CornerRadius="5"
+                        HeightRequest="40"
+                        WidthRequest="90"
+                        x:Name="AddButton"/>
+                
+                <Button Text="Edit" 
+                        BackgroundColor="#00e5ff" 
+                        TextColor="Black"
+                        CornerRadius="5"
+                        HeightRequest="40"
+                        WidthRequest="90"
+                        x:Name="EditButton"/>
+                
+                <Button Text="Delete" 
+                        BackgroundColor="#00e5ff" 
+                        TextColor="Black"
+                        CornerRadius="5"
+                        HeightRequest="40"
+                        WidthRequest="90"
+                        x:Name="DeleteButton"/>
+            </HorizontalStackLayout>
+        </Grid>
+        
+        <!-- Two-column layout for platform items -->
+        <ScrollView>
+            <Grid ColumnDefinitions="*,*" 
+                  ColumnSpacing="15" 
+                  RowSpacing="15" 
+                  x:Name="AccountsGrid"
+                  Padding="0,0,0,20">
+                <!-- Platform items will be added here programmatically -->
+            </Grid>
+        </ScrollView>
+
+        <!-- No accounts label -->
+        <Label Text="No platforms found. Click 'Add' to create your first platform." 
+               TextColor="White" 
+               HorizontalOptions="Center"
+               VerticalOptions="Center"
+               IsVisible="False"
+               x:Name="NoAccountsLabel"/>
+    </VerticalStackLayout>
+</ContentView> 

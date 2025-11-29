@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:login="clr-namespace:Frontend.Components.Login"
+             x:Class="Frontend.Components.Login.LoginView">
+
+<Grid>
+    <!-- Main layout for Divider and Content -->
+    <Grid x:Name="MainGrid">
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="WindowStates">
+                <VisualState x:Name="Narrow">
+                    <VisualState.Setters>
+                        <Setter TargetName="MainGrid" Property="ColumnDefinitions" Value="*"/>
+                        <Setter TargetName="MainGrid" Property="RowDefinitions" Value="*"/>
+                        <Setter TargetName="ContentArea" Property="Grid.Column" Value="0"/>
+                        <Setter TargetName="Divider" Property="IsVisible" Value="False"/>
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Wide">
+                    <VisualState.Setters>
+                        <Setter TargetName="MainGrid" Property="ColumnDefinitions" Value="3*,Auto,2*"/>
+                        <Setter TargetName="MainGrid" Property="RowDefinitions" Value="*"/>
+                        <Setter TargetName="ContentArea" Property="Grid.Column" Value="2"/>
+                        <Setter TargetName="Divider" Property="IsVisible" Value="True"/>
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <!-- Vertical Divider with glow effect (in column 1 for Wide state) -->
+        <Grid x:Name="Divider" Grid.Column="1" WidthRequest="2">
+            <BoxView Color="#00e5ff" WidthRequest="2" HorizontalOptions="Center" VerticalOptions="Fill" />
+            <BoxView Color="#00e5ff" Opacity="0.5" WidthRequest="6" HorizontalOptions="Center" VerticalOptions="Fill" />
+            <BoxView Color="#00e5ff" Opacity="0.2" WidthRequest="10" HorizontalOptions="Center" VerticalOptions="Fill" />
+        </Grid>
+
+        <!-- Right side - Content area for Login/Register -->
+        <Grid x:Name="ContentArea"
+              Grid.Column="2"
+              VerticalOptions="Center"
+              HorizontalOptions="Center">
+            <login:Login x:Name="LoginComponent"
+                         HorizontalOptions="Center"
+                         VerticalOptions="Center" />
+        </Grid>
+    </Grid>
+    
+    <!-- Branding container in a layer on top for animation purposes -->
+    <Grid x:Name="BrandingPositioningGrid"
+          Grid.Column="0"
+          HorizontalOptions="Fill"
+          VerticalOptions="Fill">
+        <VerticalStackLayout x:Name="BrandingContainer" 
+                             Spacing="10"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center">
+            <!-- Branding Image -->
+            <Image x:Name="BrandingImage"
+                   Source="silverwolf.png"
+                   Aspect="AspectFit"
+                   HorizontalOptions="Center" />
+
+            <!-- Branding Text -->
+            <VerticalStackLayout x:Name="BrandingTextLayout"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="Center"
+                                 Spacing="5">
+                <Label x:Name="TitleLabel"
+                       Text="Ax Vault"
+                       FontSize="48"
+                       FontAttributes="Bold"
+                       TextColor="#00e5ff"
+                       HorizontalOptions="Center"/>
+                <Label x:Name="SubtitleLabel"
+                       Text="A Multi-Tenant Password Manager"
+                       FontSize="18"
+                       TextColor="LightGray"
+                       HorizontalOptions="Center"/>
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </Grid>
+</Grid>
+</ContentView>
