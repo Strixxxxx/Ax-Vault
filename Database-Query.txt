@@ -1,0 +1,74 @@
+-- =================================================================
+-- Master Database Schema
+-- =================================================================
+
+-- The master database stores user credentials and a reference to their individual database.
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'Ax Vault')
+BEGIN
+    CREATE DATABASE [Ax Vault];
+END
+GO
+
+USE [Ax Vault];
+GO
+
+-- Create the Accounts table to store user information.
+-- This table includes encrypted columns and hashed columns for secure lookups.
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Accounts')
+BEGIN
+    CREATE TABLE Accounts (
+        -- The new, stable, and unique primary key for the user account.
+        accountID BIGINT PRIMARY KEY IDENTITY(1,1),
+        
+        -- The user's username, encrypted with AES-256 GCM.
+        username NVARCHAR(MAX) NOT NULL,
+
+        -- The user's email, encrypted with AES-256 GCM.
+        email NVARCHAR(MAX) NOT NULL,
+        
+        -- Hashed password for login authentication.
+        password NVARCHAR(255) NOT NULL,
+        
+        -- A separate hashed key for sensitive operations.
+        [unique key] NVARCHAR(255) NOT NULL,
+        
+        -- The name of the user's personal database for storing vault data.
+        [Database Name] NVARCHAR(50) NOT NULL,
+        
+        -- A hashed version of the username for fast, secure lookups without decryption.
+        usernameHashed NVARCHAR(255) NOT NULL UNIQUE,
+        
+        -- A hashed version of the email for fast, secure lookups without decryption.
+        emailHashed NVARCHAR(255) NOT NULL UNIQUE,
+        
+        -- The user's local timezone (e.g., 'GMT+8') for converting UTC timestamps on the frontend.
+        timezone NVARCHAR(50) NOT NULL,
+
+        -- Timestamps
+        created_at DATETIME2 DEFAULT GETUTCDATE(),
+        last_login_at DATETIME2 NULL
+    );
+END
+GO
+
+-- Create the Sessions table for logging user login/logout activity.
+IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Sessions')
+BEGIN
+    CREATE TABLE Sessions (
+        SessionId BIGINT PRIMARY KEY IDENTITY(1,1),
+        
+        -- Foreign key linking to the Accounts table.
+        accountID BIGINT NOT NULL,
+        
+        -- Timestamps for session activity, stored in UTC.
+        LoginTime DATETIME2 NOT NULL,
+        LogoutTime DATETIME2 NULL,
+        
+        -- Auditing information.
+        IPAddress NVARCHAR(45) NULL,
+        UserAgent NVARCHAR(255) NULL,
+
+        CONSTRAINT FK_Sessions_Accounts FOREIGN KEY (accountID) REFERENCES Accounts(accountID) ON DELETE CASCADE
+    );
+END
+GO

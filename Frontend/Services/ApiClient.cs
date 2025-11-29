@@ -18,8 +18,7 @@ namespace Frontend.Services
             if (string.IsNullOrEmpty(secretKey))
             {
                 // This is a critical failure. The app cannot communicate with the backend.
-                Console.WriteLine("CRITICAL: FRONTEND_SECRET_KEY is not set. API calls will fail.");
-                // In a real app, you might want to show an alert and close, or prevent any API calls.
+                throw new Exception("CRITICAL: FRONTEND_SECRET_KEY is not set. API calls will fail.");
             }
             else
             {
