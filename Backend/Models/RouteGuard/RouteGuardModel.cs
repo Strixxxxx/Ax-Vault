@@ -5,9 +5,6 @@ namespace Backend.Models.RouteGuard
     public class RouteGuardRequest
     {
         [Required]
-        public string Username { get; set; } = string.Empty;
-        
-        [Required]
         public string UniqueKey { get; set; } = string.Empty;
         
         [Required]

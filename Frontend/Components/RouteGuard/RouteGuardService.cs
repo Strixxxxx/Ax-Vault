@@ -15,23 +15,44 @@ namespace Frontend.Components.RouteGuard
             // Constructor is now empty
         }
 
-        public async Task<bool> ValidateModuleAccess(string username, string uniqueKey, string targetModule)
+        public async Task<bool> ValidateModuleAccess(string username, string uniqueKey, string targetModule, string? token = null)
         {
             try
             {
-                Console.WriteLine($"RouteGuardService - Validating access for user '{username}' to module '{targetModule}'");
+                Console.WriteLine("--- ROUTE GUARD SERVICE ---");
+                Console.WriteLine($"Validating access for user '{username}' to module '{targetModule}'");
 
-                var request = new RouteGuardRequest
+                // Get the auth token: Use passed token if available, otherwise check secure storage
+                if (string.IsNullOrEmpty(token))
                 {
-                    Username = username,
+                    token = await SecureStorage.GetAsync("auth_token");
+                }
+                
+                if (string.IsNullOrEmpty(token))
+                {
+                    Console.WriteLine("ERROR: No auth token found (neither in memory nor storage). Validation will fail.");
+                    return false;
+                }
+                Console.WriteLine($"Found auth token of length: {token.Length}. First 15 chars: {token.Substring(0, Math.Min(15, token.Length))}...");
+
+
+                var requestData = new RouteGuardRequest
+                {
                     UniqueKey = uniqueKey,
                     TargetModule = targetModule
                 };
 
-                // Log request details (don't log the full unique key for security)
-                Console.WriteLine($"Sending request with Username: {username}, TargetModule: {targetModule}, Key Length: {uniqueKey?.Length ?? 0}");
+                // Create HTTP request with authorization header
+                var request = new HttpRequestMessage(HttpMethod.Post, "api/RouteGuard/validate");
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                request.Content = JsonContent.Create(requestData);
 
-                var response = await ApiClient.Instance.PostAsJsonAsync("api/RouteGuard/validate", request);
+                // Log request details (don't log the full unique key for security)
+                var requestJson = await request.Content.ReadAsStringAsync();
+                Console.WriteLine($"Sending request with Payload: {requestJson}");
+
+
+                var response = await ApiClient.Instance.SendAsync(request);
 
                 Console.WriteLine($"Response status: {response.StatusCode}");
 
@@ -49,6 +70,10 @@ namespace Frontend.Components.RouteGuard
             catch (Exception ex)
             {
                 Console.WriteLine($"Error validating module access: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
                 return false;
             }
         }
@@ -56,7 +81,6 @@ namespace Frontend.Components.RouteGuard
 
     public class RouteGuardRequest
     {
-        public required string Username { get; set; }
         public required string UniqueKey { get; set; }
         public required string TargetModule { get; set; }
     }

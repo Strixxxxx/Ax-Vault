@@ -39,7 +39,8 @@
         <Grid x:Name="ContentArea"
               Grid.Column="2"
               VerticalOptions="Center"
-              HorizontalOptions="Center">
+              HorizontalOptions="Center"
+              ZIndex="10">
             <login:Login x:Name="LoginComponent"
                          HorizontalOptions="Center"
                          VerticalOptions="Center" />
@@ -50,7 +51,8 @@
     <Grid x:Name="BrandingPositioningGrid"
           Grid.Column="0"
           HorizontalOptions="Fill"
-          VerticalOptions="Fill">
+          VerticalOptions="Fill"
+          InputTransparent="True">
         <VerticalStackLayout x:Name="BrandingContainer" 
                              Spacing="10"
                              VerticalOptions="Center"

@@ -10,7 +10,7 @@ namespace Frontend.Services
             var instance = new HttpClient();
 
             // Set the base address to your development machine's IP where Nginx is running
-            string apiBaseUrl = "http://localhost:5180"; // Replace with your actual IP address
+            string apiBaseUrl = "http://localhost:5180/"; // Replace with your actual IP address
             instance.BaseAddress = new Uri(apiBaseUrl);
 
             // Get the frontend secret key from the manually loaded settings

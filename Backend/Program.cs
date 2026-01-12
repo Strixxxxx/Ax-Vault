@@ -6,6 +6,10 @@ using Microsoft.OpenApi.Models;
 using Backend.Data;
 using Backend.Middleware;
 using Backend.Services; // Import the services namespace
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 
 // Load .env file at the very beginning
 try
@@ -108,7 +112,7 @@ catch (InvalidOperationException ex)
 
 
 // Register services
-builder.Services.AddScoped<Backend.Services.UserDatabaseService>();
+builder.Services.AddScoped<Backend.Services.PlatformTableService>();
 builder.Services.AddSingleton<EncryptionService>();
 
 // Add CORS services
@@ -129,6 +133,31 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Ax Vault API", Version = "v1" });
 });
+
+// Configure JWT Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER"),
+        ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
+        NameClaimType = JwtRegisteredClaimNames.UniqueName, // Look for unique_name claim
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_SECRET")!))
+    };
+});
+
+builder.Services.AddAuthorization();
+
 
 var app = builder.Build();
 
@@ -169,11 +198,29 @@ app.UseHttpsRedirection();
 // Use CORS
 app.UseCors("AllowMauiApp");
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 // Register the custom app verifier middleware
 app.UseMiddleware<AppVerifierMiddleware>();
 
 // Map endpoints
 app.MapGet("/", () => "Ax Vault API is running!");      
 app.MapControllers();
+
+// Register a callback to display the actual listening URLs
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    var server = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>();
+    var addressFeature = server.Features.Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>();
+    
+    if (addressFeature != null)
+    {
+        foreach (var address in addressFeature.Addresses)
+        {
+            Console.WriteLine($"Now listening on: {address}");
+        }
+    }
+});
 
 app.Run();

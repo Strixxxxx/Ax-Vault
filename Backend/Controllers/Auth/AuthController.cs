@@ -17,18 +17,16 @@ namespace Backend.Controllers
     {
         private readonly ILogger<AuthController> _logger;
         private readonly ApplicationDbContext _context;
-        private readonly UserDatabaseService _userDatabaseService;
+        // _userDatabaseService is no longer needed for DB creation
         private readonly EncryptionService _encryptionService;
 
         public AuthController(
             ILogger<AuthController> logger,
             ApplicationDbContext context,
-            UserDatabaseService userDatabaseService,
             EncryptionService encryptionService)
         {
             _logger = logger;
             _context = context;
-            _userDatabaseService = userDatabaseService;
             _encryptionService = encryptionService;
         }
 
@@ -40,7 +38,7 @@ namespace Backend.Controllers
                 return BadRequest(new { Message = "Username is required" });
             }
 
-            var usernameHash = PasswordHasher.HashPassword(username.ToLowerInvariant());
+            var usernameHash = EncryptionService.GenerateDeterministicHash(username.ToLowerInvariant());
             bool exists = await _context.Users.AnyAsync(u => u.UsernameHashed == usernameHash);
 
             return Ok(new { IsAvailable = !exists });
@@ -54,7 +52,7 @@ namespace Backend.Controllers
                 return BadRequest(new { Message = "Email is required" });
             }
 
-            var emailHash = PasswordHasher.HashPassword(email.ToLowerInvariant());
+            var emailHash = EncryptionService.GenerateDeterministicHash(email.ToLowerInvariant());
             bool exists = await _context.Users.AnyAsync(u => u.EmailHashed == emailHash);
 
             return Ok(new { IsAvailable = !exists });
@@ -75,16 +73,10 @@ namespace Backend.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
             Console.WriteLine("--- New Registration Attempt ---");
-            Console.WriteLine($"Username: {model.Username}");
-            Console.WriteLine($"Email: {model.Email}");
-            Console.WriteLine($"Password Length: {model.Password.Length}");
-            Console.WriteLine($"Unique Key Length: {model.UniqueKey.Length}");
-            Console.WriteLine($"Timezone: {model.Timezone}");
+            Console.WriteLine($"Username (Hash): {EncryptionService.GenerateDeterministicHash(model.Username)}");
             Console.WriteLine("---------------------------------");
             try
             {
-                _logger.LogInformation($"Registration attempt for user: {model.Username}");
-
                 if (!ModelState.IsValid)
                 {
                     return BadRequest(ModelState);
@@ -98,39 +90,49 @@ namespace Backend.Controllers
                 var normalizedUsername = model.Username.ToLowerInvariant();
                 var normalizedEmail = model.Email.ToLowerInvariant();
 
-                var usernameHash = PasswordHasher.HashPassword(normalizedUsername);
+                var usernameHash = EncryptionService.GenerateDeterministicHash(normalizedUsername);
                 if (await _context.Users.AnyAsync(u => u.UsernameHashed == usernameHash))
                 {
                     return BadRequest(new { Message = "Username already exists" });
                 }
 
-                var emailHash = PasswordHasher.HashPassword(normalizedEmail);
+                var emailHash = EncryptionService.GenerateDeterministicHash(normalizedEmail);
                 if (await _context.Users.AnyAsync(u => u.EmailHashed == emailHash))
                 {
                     return BadRequest(new { Message = "Email already exists" });
                 }
 
-                if (model.Password == model.UniqueKey)
+                if (model.Password == model.VaultKey)
                 {
-                    return BadRequest(new { Message = "Password and unique key must be different" });
+                    return BadRequest(new { Message = "Password and vault key must be different" });
                 }
 
-                string uniqueSuffix = DateTime.Now.ToString("yyyyMMddHHmmss");
-                string safeUsername = model.Username.Replace(" ", "_");
-                string databaseName = $"{safeUsername}_{uniqueSuffix}_db";
+                // Zero-Knowledge Encryption
+                // 1. Derive Key from Vault Key
+                string derivedKey = _encryptionService.DeriveKeyFromVaultKey(model.VaultKey);
 
-                await _userDatabaseService.CreateUserDatabaseAsync(model.Username, databaseName);
-                _logger.LogInformation($"Created database '{databaseName}' for user '{model.Username}'");
-                
+                // 2. Encrypt Data using Derived Key
+                string encryptedUsername = _encryptionService.Encrypt(model.Username, derivedKey);
+                string encryptedEmail = _encryptionService.Encrypt(model.Email, derivedKey);
+
+                // 3. Hash Vault Key for Storage (Verification only)
+                string vaultKeyHash = PasswordHasher.HashPassword(model.VaultKey);
+
+                // 4. Hash Password
+                string passwordHash = PasswordHasher.HashPassword(model.Password);
+
+                // Clear derived key from memory variables explicitly if possible (GC handles it eventually, but good practice to scope tightly)
+                // In C#, strings are immutable, so we rely on scope exit.
+
                 var user = new User
                 {
-                    Username = _encryptionService.Encrypt(model.Username),
-                    Email = _encryptionService.Encrypt(model.Email),
+                    Username = encryptedUsername,
+                    Email = encryptedEmail,
                     UsernameHashed = usernameHash,
                     EmailHashed = emailHash,
-                    PasswordHash = PasswordHasher.HashPassword(model.Password),
-                    UniqueKey = PasswordHasher.HashPassword(model.UniqueKey),
-                    DatabaseName = databaseName,
+                    PasswordHash = passwordHash,
+                    VaultKey = vaultKeyHash, // Stores the Hashed Vault Key
+                    DatabaseName = string.Empty, // No longer used
                     Timezone = model.Timezone,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -144,9 +146,11 @@ namespace Backend.Controllers
                 {
                     Message = "Registration successful",
                     Token = token,
-                    Username = model.Username,
+                    // We cannot return decrypted data without the key, and we shouldn't persist the key.
+                    // Returning the input values is fine as we are in the same session.
+                    Username = model.Username, 
                     Email = model.Email,
-                    DatabaseName = user.DatabaseName
+                    DatabaseName = ""
                 });
             }
             catch (Exception ex)
@@ -159,12 +163,12 @@ namespace Backend.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
-            _logger.LogInformation($"Login attempt for user: {model.Username}");
+            _logger.LogInformation($"Login attempt for user.");
 
             try
             {
                 var normalizedInput = model.Username.ToLowerInvariant();
-                var inputHash = PasswordHasher.HashPassword(normalizedInput);
+                var inputHash = EncryptionService.GenerateDeterministicHash(normalizedInput);
 
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
 
@@ -173,8 +177,18 @@ namespace Backend.Controllers
                     return Unauthorized(new { Message = "Invalid username or password" });
                 }
 
-                var decryptedUsername = _encryptionService.Decrypt(user.Username);
-                var token = GenerateJwtToken(decryptedUsername);
+                // In Zero-Knowledge, we CANNOT decrypt the username without the Vault Key.
+                // The LoginModel currently does not include the Vault Key.
+                // We will return the available info. 
+                // The user's prompt implied "backend would remove the plaintext vault key... and goes back to login page".
+                // We assume regular login verifies Password. Accessing Vault items will likely require Vault Key later in a separate step or session.
+                
+                // For now, return the Token. Use the Hashed Username or a placeholder for the Identity Name since we can't decrypt the real one.
+                // Or use the Input Username since we verified the hash matches.
+                
+                string safeUsernameForToken = model.Username; 
+
+                var token = GenerateJwtToken(safeUsernameForToken);
 
                 user.LastLoginAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
@@ -182,8 +196,8 @@ namespace Backend.Controllers
                 return Ok(new
                 {
                     Token = token,
-                    Username = decryptedUsername,
-                    DatabaseName = user.DatabaseName
+                    Username = model.Username, // Return the input username since we confirmed it matches
+                    DatabaseName = ""
                 });
             }
             catch (Exception ex)
@@ -213,6 +227,7 @@ namespace Backend.Controllers
                 var claims = new[]
                 {
                     new Claim(JwtRegisteredClaimNames.Sub, username),
+                    new Claim(JwtRegisteredClaimNames.UniqueName, username),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
                 };
 
@@ -232,48 +247,12 @@ namespace Backend.Controllers
                 throw;
             }
         }
-
-        [HttpPost("fix-database-permissions")]
-        public async Task<IActionResult> FixDatabasePermissions([FromBody] FixDatabaseModel model)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(model.Username))
-                {
-                    return BadRequest(new { Message = "Username is required" });
-                }
-
-                var usernameHash = PasswordHasher.HashPassword(model.Username.ToLowerInvariant());
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == usernameHash);
-
-                if (user == null)
-                {
-                    return NotFound(new { Message = "User not found" });
-                }
-
-                _logger.LogInformation($"Fixing database permissions for user {model.Username} (database: {user.DatabaseName})");
-
-                await _userDatabaseService.EnsureDatabasePermissionsAsync(user.DatabaseName);
-
-                return Ok(new { Message = $"Database permissions for {user.DatabaseName} fixed successfully" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error fixing database permissions");
-                return StatusCode(500, new { Message = $"An error occurred while fixing database permissions: {ex.Message}" });
-            }
-        }
     }
 
     public class LoginModel
     {
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-    }
-
-    public class FixDatabaseModel
-    {
-        public string Username { get; set; } = string.Empty;
     }
 }
  

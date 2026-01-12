@@ -46,14 +46,14 @@ namespace Frontend.Components.Accounts.AddAccount
             return username;
         }
 
-        private void OnShowPasswordButtonClicked(object sender, EventArgs e)
+        private void OnShowPasswordButtonClicked(object? sender, EventArgs e)
         {
             _showPassword = !_showPassword;
             PasswordEntry.IsPassword = !_showPassword;
             ShowPasswordButton.Text = _showPassword ? "🙈" : "👁️";
         }
 
-        private async void OnCreateButtonClicked(object sender, EventArgs e)
+        private async void OnCreateButtonClicked(object? sender, EventArgs e)
         {
             // Validate inputs
             if (string.IsNullOrWhiteSpace(UsernameEntry.Text))
@@ -128,7 +128,7 @@ namespace Frontend.Components.Accounts.AddAccount
             }
         }
 
-        private async void OnCancelButtonClicked(object sender, EventArgs e)
+        private async void OnCancelButtonClicked(object? sender, EventArgs e)
         {
             await Navigation.PopAsync(); // Return to previous page
         }
@@ -137,10 +137,10 @@ namespace Frontend.Components.Accounts.AddAccount
     // Model for account creation
     public class AccountModel
     {
-        public string Platform { get; set; }
-        public string Username { get; set; }
-        public string Password { get; set; }
-        public string Description { get; set; }
+        public string? Platform { get; set; }
+        public string? Username { get; set; }
+        public string? Password { get; set; }
+        public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

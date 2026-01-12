@@ -26,14 +26,9 @@ namespace Backend.Models
         public string PasswordHash { get; set; } = string.Empty;
 
         [Required]
-        [Column("unique key")]
+        [Column("vault key")]
         [StringLength(255)]
-        public string UniqueKey { get; set; } = string.Empty;
-
-        [Required]
-        [Column("Database Name")]
-        [StringLength(50)]
-        public string DatabaseName { get; set; } = string.Empty;
+        public string VaultKey { get; set; } = string.Empty;
 
         [Required]
         [Column("usernameHashed")]

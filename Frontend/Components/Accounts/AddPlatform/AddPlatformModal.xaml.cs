@@ -125,9 +125,9 @@ namespace Frontend.Components.Accounts.AddPlatform
                 // Display network activity indicator (if available on the platform)
                 if (DeviceInfo.Platform == DevicePlatform.iOS)
                 {
-                    Application.Current.Dispatcher.Dispatch(() => { 
+                    Dispatcher.Dispatch(() => { 
                         try {
-                            Application.Current.MainPage.IsBusy = true;
+                            this.IsBusy = true;
                         } catch { /* ignore */ }
                     });
                 }
@@ -178,9 +178,9 @@ namespace Frontend.Components.Accounts.AddPlatform
                     // Hide network activity indicator
                     if (DeviceInfo.Platform == DevicePlatform.iOS)
                     {
-                        Application.Current.Dispatcher.Dispatch(() => { 
+                        Dispatcher.Dispatch(() => { 
                             try {
-                                Application.Current.MainPage.IsBusy = false;
+                                this.IsBusy = false;
                             } catch { /* ignore */ }
                         });
                     }
@@ -214,7 +214,7 @@ namespace Frontend.Components.Accounts.AddPlatform
         
         private class ErrorResponse
         {
-            public string Message { get; set; }
+            public string? Message { get; set; }
         }
     }
 

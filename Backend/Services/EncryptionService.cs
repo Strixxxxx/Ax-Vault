@@ -6,25 +6,37 @@ namespace Backend.Services
 {
     public class EncryptionService
     {
-        private readonly byte[] _key;
+        // Removed static _key. Encryption now requires a key to be passed.
+        // This enforces Zero-Knowledge as the server does not store the key (Vault Key).
 
         public EncryptionService()
         {
-            var keyString = Environment.GetEnvironmentVariable("BACKEND_AES_256_KEY");
-            if (string.IsNullOrEmpty(keyString) || keyString.Length < 32)
-            {
-                throw new InvalidOperationException("BACKEND_AES_256_KEY environment variable must be at least 32 characters long.");
-            }
-            // Use the first 32 bytes (256 bits) of the key string for the AES key.
-            _key = Encoding.UTF8.GetBytes(keyString.Substring(0, 32));
         }
 
-        public string Encrypt(string plainText)
+        /// <summary>
+        /// Derives a 32-byte encryption key from the user's Vault Key using SHA256.
+        /// </summary>
+        public string DeriveKeyFromVaultKey(string vaultKey)
         {
-            if (string.IsNullOrEmpty(plainText))
+            if (string.IsNullOrEmpty(vaultKey))
             {
-                return string.Empty;
+                throw new ArgumentNullException(nameof(vaultKey));
             }
+
+            using (var sha256 = SHA256.Create())
+            {
+                byte[] keyBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(vaultKey));
+                return Convert.ToBase64String(keyBytes);
+            }
+        }
+
+        public string Encrypt(string plainText, string keyBase64)
+        {
+            if (string.IsNullOrEmpty(plainText)) return string.Empty;
+            if (string.IsNullOrEmpty(keyBase64)) throw new ArgumentNullException(nameof(keyBase64));
+
+            byte[] key = Convert.FromBase64String(keyBase64);
+            if (key.Length != 32) throw new ArgumentException("Key must be 32 bytes (256 bits).");
 
             byte[] plainTextBytes = Encoding.UTF8.GetBytes(plainText);
 
@@ -35,7 +47,7 @@ namespace Backend.Services
             byte[] cipherText = new byte[plainTextBytes.Length];
             byte[] tag = new byte[AesGcm.TagByteSizes.MaxSize]; // 16 bytes
 
-            using (var aesGcm = new AesGcm(_key, AesGcm.TagByteSizes.MaxSize))
+            using (var aesGcm = new AesGcm(key, AesGcm.TagByteSizes.MaxSize))
             {
                 aesGcm.Encrypt(nonce, plainTextBytes, cipherText, tag);
             }
@@ -49,12 +61,13 @@ namespace Backend.Services
             return Convert.ToBase64String(encryptedData);
         }
 
-        public string Decrypt(string encryptedText)
+        public string Decrypt(string encryptedText, string keyBase64)
         {
-            if (string.IsNullOrEmpty(encryptedText))
-            {
-                return string.Empty;
-            }
+            if (string.IsNullOrEmpty(encryptedText)) return string.Empty;
+            if (string.IsNullOrEmpty(keyBase64)) throw new ArgumentNullException(nameof(keyBase64));
+
+            byte[] key = Convert.FromBase64String(keyBase64);
+            if (key.Length != 32) throw new ArgumentException("Key must be 32 bytes (256 bits).");
 
             byte[] encryptedData = Convert.FromBase64String(encryptedText);
 
@@ -70,12 +83,31 @@ namespace Backend.Services
 
             byte[] decryptedBytes = new byte[cipherText.Length];
 
-            using (var aesGcm = new AesGcm(_key, AesGcm.TagByteSizes.MaxSize))
+            using (var aesGcm = new AesGcm(key, AesGcm.TagByteSizes.MaxSize))
             {
                 aesGcm.Decrypt(nonce, cipherText, tag, decryptedBytes);
             }
 
             return Encoding.UTF8.GetString(decryptedBytes);
+        }
+
+        public static string GenerateDeterministicHash(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return string.Empty;
+            }
+
+            using (var sha256 = SHA256.Create())
+            {
+                byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(text));
+                StringBuilder builder = new StringBuilder();
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    builder.Append(bytes[i].ToString("x2"));
+                }
+                return builder.ToString();
+            }
         }
     }
 }

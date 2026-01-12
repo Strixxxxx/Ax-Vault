@@ -11,13 +11,8 @@
     <Grid RowDefinitions="*,Auto">
         <!-- Main content area that will switch between Login view and Dashboard -->
         <Grid Grid.Row="0">
-            <!-- Login View (visible initially) -->
             <login:LoginView x:Name="LoginView" IsVisible="True" />
-
-            <!-- Register Component (initially hidden) -->
             <register:Register x:Name="RegisterComponent" IsVisible="False" VerticalOptions="Center" HorizontalOptions="Center" />
-            
-            <!-- Main Layout Component (contains Dashboard, Accounts, Backup) -->
             <layout:MainLayout x:Name="MainLayoutComponent" IsVisible="False" />
         </Grid>
         

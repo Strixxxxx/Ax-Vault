@@ -1,0 +1,21 @@
+Based on my scan of the entire Frontend directory, the application builds successfully with no compilation errors, but there are several potential runtime issues that could cause crashes on Android and Windows platforms when running 'dotnet run -f net10.0-android' or 'dotnet run -f net10.0-windows10.0.19041.0'. The issues include:
+
+Obsolete API Usage: Multiple uses of DisplayAlert (obsolete) instead of DisplayAlertAsync, and Application.MainPage (obsolete) instead of the Window property. These could cause runtime warnings or failures on newer .NET MAUI versions.
+
+Windows Lifecycle Events Disabled: The Windows-specific lifecycle events in MauiProgram.cs are commented out, which may prevent proper window initialization on Windows, leading to crashes.
+
+XAML Binding Performance Warnings: Missing x:DataType on bindings could cause runtime performance issues or binding failures.
+
+Potential Component Issues: Some directories like DeleteAccount, EditAccount, etc., exist but may have incomplete implementations, though the code shows placeholder alerts.
+
+Environment Loading: The .env file loading in App.xaml.cs could fail on certain platforms if FileSystem.OpenAppPackageFileAsync behaves differently.
+
+The prioritized plan (following GEMINI rules: Frontend fixes first) is to address these issues systematically:
+
+Update all DisplayAlert calls to DisplayAlertAsync across the codebase.
+Replace Application.MainPage with proper Window property access.
+Uncomment and enable the Windows lifecycle events in MauiProgram.cs.
+Add x:DataType to XAML bindings where warned.
+Verify and complete any missing component implementations.
+Run dotnet build to confirm no new errors.
+This should resolve the crashes by ensuring compatibility with .NET MAUI 10.0 and proper platform-specific initialization.

@@ -8,6 +8,7 @@ namespace Frontend.Components.RouteGuard
     {
         private readonly INavigation _navigation;
         private readonly string _username;
+        private readonly string? _token;
         
         // List of modules that require route guard protection
         private static readonly string[] ProtectedModules = new[]
@@ -17,10 +18,11 @@ namespace Frontend.Components.RouteGuard
             "Backups"
         };
         
-        public RouteGuardNavigator(INavigation navigation, string? username)
+        public RouteGuardNavigator(INavigation navigation, string? username, string? token = null)
         {
             _navigation = navigation;
             _username = username ?? string.Empty;
+            _token = token;
         }
         
         /// <summary>
@@ -49,7 +51,8 @@ namespace Frontend.Components.RouteGuard
                     {
                         // On cancel callback
                         taskCompletionSource.SetResult(false);
-                    }
+                    },
+                    _token // Pass the in-memory token
                 );
                 
                 await _navigation.PushModalAsync(routeGuardPage);

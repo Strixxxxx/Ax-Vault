@@ -9,6 +9,7 @@ namespace Frontend.Components.RouteGuard
     {
         private readonly RouteGuardService _routeGuardService;
         private readonly string _username;
+        private readonly string? _token; // In-memory token
         private readonly string _targetModule;
         private readonly Action _onSuccessCallback;
         private readonly Action _onCancelCallback;
@@ -25,7 +26,7 @@ namespace Frontend.Components.RouteGuard
         // Loading state
         public bool IsNotBusy => !IsBusy;
         
-        public RouteGuardPage(string username, string targetModule, Action onSuccessCallback, Action onCancelCallback)
+        public RouteGuardPage(string username, string targetModule, Action onSuccessCallback, Action onCancelCallback, string? token = null)
         {
             InitializeComponent();
             
@@ -33,6 +34,7 @@ namespace Frontend.Components.RouteGuard
             
             // Store parameters
             _username = username;
+            _token = token;
             _targetModule = targetModule;
             _onSuccessCallback = onSuccessCallback;
             _onCancelCallback = onCancelCallback;
@@ -54,9 +56,12 @@ namespace Frontend.Components.RouteGuard
             try
             {
                 string uniqueKey = UniqueKeyEntry.Text;
-                
+                Console.WriteLine("--- ROUTE GUARD UI ---");
+                Console.WriteLine($"Captured unique key for validation. Length: {uniqueKey?.Length ?? 0}");
+
                 if (string.IsNullOrEmpty(uniqueKey))
                 {
+                    Console.WriteLine("ERROR: Unique key is empty");
                     ErrorMessage = "Please enter your unique key";
                     OnPropertyChanged(nameof(ErrorMessage));
                     OnPropertyChanged(nameof(HasError));
@@ -68,14 +73,14 @@ namespace Frontend.Components.RouteGuard
                 OnPropertyChanged(nameof(IsBusy));
                 OnPropertyChanged(nameof(IsNotBusy));
                 
-                Console.WriteLine($"Attempting to validate with username: {_username}, key length: {uniqueKey.Length}, module: {_targetModule}");
+                Console.WriteLine($"Starting validation for username: {_username}, module: {_targetModule}");
                 
                 // Add a small delay to show loading state
                 await Task.Delay(500);
                 
                 // Validate access with the backend
-                bool isAuthorized = await _routeGuardService.ValidateModuleAccess(_username, uniqueKey, _targetModule);
-                Console.WriteLine($"Validation result: {isAuthorized}");
+                bool isAuthorized = await _routeGuardService.ValidateModuleAccess(_username, uniqueKey, _targetModule, _token);
+                Console.WriteLine($"Validation result from service: {isAuthorized}");
                 
                 if (isAuthorized)
                 {
@@ -87,7 +92,7 @@ namespace Frontend.Components.RouteGuard
                 else
                 {
                     // Access denied - show error
-                    Console.WriteLine("Access denied, showing error");
+                    Console.WriteLine("Access denied, showing error in UI");
                     ErrorMessage = "Invalid unique key. Please try again.";
                     OnPropertyChanged(nameof(ErrorMessage));
                     OnPropertyChanged(nameof(HasError));
@@ -95,7 +100,11 @@ namespace Frontend.Components.RouteGuard
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Exception in RouteGuardPage: {ex}");
+                Console.WriteLine($"Exception in RouteGuardPage: {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
+                }
                 ErrorMessage = $"An error occurred: {ex.Message}";
                 OnPropertyChanged(nameof(ErrorMessage));
                 OnPropertyChanged(nameof(HasError));

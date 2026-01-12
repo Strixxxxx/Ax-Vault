@@ -6,14 +6,14 @@ namespace Frontend.Components.Login
 {
     public partial class LoginView : ContentView
     {
-        public event EventHandler<bool> LoginSuccessful;
-        public event EventHandler RegisterRequested;
+        public event EventHandler<Login.LoginSuccessEventArgs>? LoginSuccessful;
+        public event EventHandler? RegisterRequested;
 
         public LoginView()
         {
             InitializeComponent();
             this.Loaded += OnLoginViewLoaded;
-            LoginComponent.LoginCompleted += (s, success) => LoginSuccessful?.Invoke(s, success);
+            LoginComponent.LoginCompleted += (s, args) => LoginSuccessful?.Invoke(s, args);
             LoginComponent.RegisterRequested += (s, e) => RegisterRequested?.Invoke(this, EventArgs.Empty);
         }
 
@@ -22,7 +22,7 @@ namespace Frontend.Components.Login
             LoginComponent.ResetForm();
         }
 
-        private async void OnLoginViewLoaded(object sender, EventArgs e)
+        private async void OnLoginViewLoaded(object? sender, EventArgs e)
         {
             await AnimateIntro();
         }

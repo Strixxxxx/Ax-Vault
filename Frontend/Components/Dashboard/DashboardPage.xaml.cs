@@ -12,9 +12,6 @@ namespace Frontend.Components.Dashboard
             InitializeComponent();
             
             _username = username;
-            
-            // Initialize the dashboard immediately
-            InitializeDashboardAsync();
         }
         
         protected override async void OnAppearing()

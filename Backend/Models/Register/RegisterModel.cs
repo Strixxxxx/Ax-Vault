@@ -13,12 +13,12 @@ public class RegisterModel
     public string Email { get; set; } = string.Empty;
     
     [Required]
-    [StringLength(100, MinimumLength = 8)]
+    [StringLength(16, MinimumLength = 8)]
     public string Password { get; set; } = string.Empty;
     
     [Required]
-    [StringLength(100, MinimumLength = 6)]
-    public string UniqueKey { get; set; } = string.Empty;
+    [StringLength(16, MinimumLength = 12)]
+    public string VaultKey { get; set; } = string.Empty;
 
     [Required]
     public string Timezone { get; set; } = string.Empty;

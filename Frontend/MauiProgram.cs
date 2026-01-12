@@ -11,23 +11,6 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = MauiApp.CreateBuilder();
-
-        try
-        {
-            // Load environment variables from the .env file
-            DotNetEnv.Env.Load();
-        }
-        catch (Exception ex)
-        {
-            // Handle exceptions if the .env file is not found or is invalid
-            throw new Exception($"CRITICAL STARTUP ERROR: Could not load the .env file. Please ensure a valid '.env' file exists in the 'Frontend' project directory. Details: {ex.Message}");
-        }
-
-        // Add a startup validation check for the frontend secret
-        if (string.IsNullOrEmpty(AppSettings.FrontendSecret))
-        {
-            throw new Exception("CRITICAL STARTUP ERROR: 'FRONTEND_SECRET_KEY' is not loaded. Please ensure a valid '.env' file with the key exists in the 'Frontend' project directory. The application cannot run without it.");
-        }
         
         // Enable debug logging
         builder.Logging.AddDebug();

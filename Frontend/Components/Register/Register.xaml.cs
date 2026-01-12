@@ -15,13 +15,10 @@ public partial class Register : ContentView
     private string? _password;
     private string? _uniqueKey;
     
-    // API base URL
-    private readonly string _apiBaseUrl;
-    
     // Step components
-    private UsernameStep _usernameStep;
-    private EmailStep _emailStep;
-    private PasswordStep _passwordStep;
+    private readonly UsernameStep _usernameStep;
+    private readonly EmailStep _emailStep;
+    private readonly PasswordStep _passwordStep;
     
     // Current step tracker
     private int _currentStep = 1;
@@ -39,13 +36,6 @@ public partial class Register : ContentView
         _usernameStep.ValidationChanged += OnStepValidationChanged;
         _emailStep.ValidationChanged += OnStepValidationChanged;
         _passwordStep.ValidationChanged += OnStepValidationChanged;
-        
-        // Set the API base URL based on the platform
-        // For Android emulator, use 10.0.2.2 to access the host machine
-        // For Windows, use localhost
-        _apiBaseUrl = DeviceInfo.Platform == DevicePlatform.Android 
-            ? "http://10.0.2.2:5180" 
-            : "http://localhost:5180";
         
         // Start with the first step
         ShowStep(1);
@@ -113,7 +103,7 @@ public partial class Register : ContentView
         }
     }
     
-    private void OnNextClicked(object sender, EventArgs e)
+    private void OnNextClicked(object? sender, EventArgs e)
     {
         // Save data from current step
         switch (_currentStep)
@@ -136,7 +126,7 @@ public partial class Register : ContentView
         }
     }
     
-    private void OnBackClicked(object sender, EventArgs e)
+    private void OnBackClicked(object? sender, EventArgs e)
     {
         if (_currentStep > 1)
         {
@@ -144,7 +134,7 @@ public partial class Register : ContentView
         }
     }
     
-    private void OnLoginTapped(object sender, EventArgs e)
+    private void OnLoginTapped(object? sender, EventArgs e)
     {
         LoginRequested?.Invoke(this, EventArgs.Empty);
     }
@@ -180,8 +170,9 @@ public partial class Register : ContentView
                 var result = await response.Content.ReadFromJsonAsync<RegistrationResponse>();
                 
                 // Show success message
-                await Application.Current.MainPage.DisplayAlert("Registration Successful", 
-                    "Your account has been created. Please log in with your credentials.", "OK");
+                if (this.Window?.Page != null)
+                    await this.Window.Page.DisplayAlert("Registration Successful", 
+                        "Your account has been created. Please log in with your credentials.", "OK");
                 
                 // Signal successful registration
                 RegistrationCompleted?.Invoke(this, false);
@@ -195,9 +186,10 @@ public partial class Register : ContentView
                 var errorDetails = await response.Content.ReadAsStringAsync();
                 
                 // Display the detailed error message from the backend.
-                await Application.Current.MainPage.DisplayAlert("Registration Error", 
-                    string.IsNullOrWhiteSpace(errorDetails) ? "An unknown error occurred." : errorDetails,
-                    "OK");
+                if (this.Window?.Page != null)
+                    await this.Window.Page.DisplayAlert("Registration Error", 
+                        string.IsNullOrWhiteSpace(errorDetails) ? "An unknown error occurred." : errorDetails,
+                        "OK");
 
                 RegistrationCompleted?.Invoke(this, false);
             }
@@ -205,7 +197,8 @@ public partial class Register : ContentView
         catch (Exception ex)
         {
             // Show detailed exception message
-            await Application.Current.MainPage.DisplayAlert("Registration Error", $"An unexpected error occurred: {ex.Message}", "OK");
+            if (this.Window?.Page != null)
+                await this.Window.Page.DisplayAlert("Registration Error", $"An unexpected error occurred: {ex.Message}", "OK");
             RegistrationCompleted?.Invoke(this, false);
         }
         finally

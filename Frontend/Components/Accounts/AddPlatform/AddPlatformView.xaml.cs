@@ -38,7 +38,7 @@ namespace Frontend.Components.Accounts.AddPlatform
             return username;
         }
 
-        private async void OnCreateButtonClicked(object sender, EventArgs e)
+        private async void OnCreateButtonClicked(object? sender, EventArgs e)
         {
             // Validate inputs
             if (string.IsNullOrWhiteSpace(PlatformNameEntry.Text))
@@ -105,7 +105,7 @@ namespace Frontend.Components.Accounts.AddPlatform
             }
         }
 
-        private async void OnCancelButtonClicked(object sender, EventArgs e)
+        private async void OnCancelButtonClicked(object? sender, EventArgs e)
         {
             await Navigation.PopAsync(); // Return to previous page
         }
@@ -114,8 +114,8 @@ namespace Frontend.Components.Accounts.AddPlatform
     // Model for platform creation
     public class PlatformModel
     {
-        public string Name { get; set; }
-        public string Description { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 }

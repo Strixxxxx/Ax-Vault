@@ -22,10 +22,10 @@ namespace Frontend.Components.Accounts
         
         public ObservableCollection<AccountItem> Accounts { get; set; } = new ObservableCollection<AccountItem>();
         public ObservableCollection<PlatformItem> Platforms { get; set; } = new ObservableCollection<PlatformItem>();
-        private AccountItem? selectedAccount;
         private string currentMode = "normal"; // normal, add, edit, delete
-        private readonly string _username;
-        private readonly string _databaseName;
+		private bool _isInitialized = false;
+        private string _username = string.Empty;
+        private string _databaseName = string.Empty;
 
         public AccountsView()
         {
@@ -37,9 +37,21 @@ namespace Frontend.Components.Accounts
             DeleteButton.Clicked += OnDeleteButtonClicked;
             SearchEntry.TextChanged += OnSearchTextChanged;
 
-            // Get username and database name from secure storage
-            _username = SecureStorage.GetAsync("username").Result ?? string.Empty;
-            _databaseName = SecureStorage.GetAsync("database_name").Result ?? string.Empty;
+            // Defer async initialization to the Loaded event to avoid deadlocks
+            Loaded += OnAccountsViewLoaded;
+        }
+
+        private async void OnAccountsViewLoaded(object? sender, EventArgs e)
+        {
+            if (_isInitialized)
+            {
+                return;
+            }
+            _isInitialized = true;
+
+            // Get username and database name from secure storage asynchronously
+            _username = await SecureStorage.GetAsync("username") ?? string.Empty;
+            _databaseName = await SecureStorage.GetAsync("database_name") ?? string.Empty;
 
             // Initially disable edit and delete buttons until an account is selected
             UpdateButtonStates();
@@ -247,7 +259,7 @@ namespace Frontend.Components.Accounts
             {
                 grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 
-                Button actionButton = null;
+                Button? actionButton = null;
                 
                 switch (currentMode)
                 {
@@ -358,7 +370,7 @@ namespace Frontend.Components.Accounts
             }
         }
 
-        private void OnAddButtonClicked(object sender, EventArgs e)
+        private void OnAddButtonClicked(object? sender, EventArgs e)
         {
             if (currentMode == "normal")
             {
@@ -387,33 +399,33 @@ namespace Frontend.Components.Accounts
             RenderPlatformsNormalMode();
         }
 
-        private void OnAddAccountButtonClicked(object sender, EventArgs e)
+        private void OnAddAccountButtonClicked(object? sender, EventArgs e)
         {
             if (sender is Button button && button.BindingContext is PlatformItem platform)
             {
                 // Navigate to the Add Account page with the platform name
                 // For now, just show an alert
-                Application.Current.MainPage.DisplayAlert("Add Account", $"Adding account to {platform.Name}", "OK");
+                this.Window.Page?.DisplayAlert("Add Account", $"Adding account to {platform.Name}", "OK");
             }
         }
         
-        private void OnEditAccountButtonClicked(object sender, EventArgs e)
+        private void OnEditAccountButtonClicked(object? sender, EventArgs e)
         {
             if (sender is Button button && button.BindingContext is PlatformItem platform)
             {
                 // Navigate to the Edit Account page with the platform name
                 // For now, just show an alert
-                Application.Current.MainPage.DisplayAlert("Edit Account", $"Editing account in {platform.Name}", "OK");
+                this.Window.Page?.DisplayAlert("Edit Account", $"Editing account in {platform.Name}", "OK");
             }
         }
         
-        private void OnDeleteAccountButtonClicked(object sender, EventArgs e)
+        private void OnDeleteAccountButtonClicked(object? sender, EventArgs e)
         {
             if (sender is Button button && button.BindingContext is PlatformItem platform)
             {
                 // Show confirmation dialog and delete the account
                 // For now, just show an alert
-                Application.Current.MainPage.DisplayAlert("Delete Account", $"Deleting account from {platform.Name}", "OK");
+                this.Window.Page?.DisplayAlert("Delete Account", $"Deleting account from {platform.Name}", "OK");
             }
         }
         
@@ -436,10 +448,13 @@ namespace Frontend.Components.Accounts
             };
             
             // Show the modal
-            await Application.Current.MainPage.Navigation.PushModalAsync(addPlatformModal);
+            if (this.Window.Page?.Navigation != null)
+            {
+                await Application.Current.MainPage.Navigation.PushModalAsync(addPlatformModal);
+            }
         }
 
-        private void OnEditButtonClicked(object sender, EventArgs e)
+        private void OnEditButtonClicked(object? sender, EventArgs e)
         {
             if (currentMode == "normal")
             {
@@ -457,7 +472,7 @@ namespace Frontend.Components.Accounts
             }
         }
 
-        private void OnDeleteButtonClicked(object sender, EventArgs e)
+        private void OnDeleteButtonClicked(object? sender, EventArgs e)
         {
             if (currentMode == "normal")
             {
@@ -475,7 +490,7 @@ namespace Frontend.Components.Accounts
             }
         }
 
-        private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+        private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
         {
             string searchText = e.NewTextValue?.ToLower() ?? string.Empty;
             
@@ -537,17 +552,17 @@ namespace Frontend.Components.Accounts
         // This class represents a platform item in the UI
         public class PlatformItem
         {
-            public string Name { get; set; }
+            public string Name { get; set; } = string.Empty;
             public int AccountCount { get; set; }
         }
 
         // This class represents an account item in the UI
         public class AccountItem
         {
-            public string Id { get; set; }
-            public string Platform { get; set; }
-            public string Username { get; set; }
-            public string Password { get; set; }
+            public string Id { get; set; } = string.Empty;
+            public string Platform { get; set; } = string.Empty;
+            public string Username { get; set; } = string.Empty;
+            public string Password { get; set; } = string.Empty;
             public DateTime Created { get; set; }
             public DateTime LastModified { get; set; }
         }

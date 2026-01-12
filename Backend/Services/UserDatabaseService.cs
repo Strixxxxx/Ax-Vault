@@ -128,25 +128,15 @@ public class UserDatabaseService
             {
                 await connection.OpenAsync();
                 
-                // Create a user in the database linked to the login if it doesn't exist
-                // Using USE statement to switch context to the user database
-                string setupUserSql = $@"
-                    USE [{databaseName}];
-                    
-                    -- Check if the user exists, if not create it
-                    IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '{sqlLogin}')
-                    BEGIN
-                        CREATE USER [{sqlLogin}] FOR LOGIN [{sqlLogin}];
-                    END
-                    
-                    -- Add user to db_owner role to have full control
-                    EXEC sp_addrolemember 'db_owner', '{sqlLogin}';
-                ";
+                // This is a more robust way to ensure the login has ownership of the database.
+                // The login that creates the database is automatically the owner (dbo), but if the DB
+                // already existed, this ensures the correct login is the owner.
+                string setupUserSql = $"ALTER AUTHORIZATION ON DATABASE::[{databaseName}] TO [{sqlLogin}]";
+
+                var command = new SqlCommand(setupUserSql, connection);
+                await command.ExecuteNonQueryAsync();
                 
-                var createUserCommand = new SqlCommand(setupUserSql, connection);
-                await createUserCommand.ExecuteNonQueryAsync();
-                
-                _logger.LogInformation($"Successfully set up user permissions for database '{databaseName}'");
+                _logger.LogInformation($"Successfully ensured owner permissions for database '{databaseName}'");
             }
         }
         catch (Exception ex)

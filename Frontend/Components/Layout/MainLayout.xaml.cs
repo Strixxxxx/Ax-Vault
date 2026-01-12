@@ -14,10 +14,10 @@ namespace Frontend.Components.Layout
         private BoxView? _outerGlow;
         private RouteGuardNavigator? _routeGuardNavigator;
         private string _username = string.Empty;
+        private string? _token; // In-memory auth token
         
         // Events
         public event EventHandler? LogoutRequested;
-        public event EventHandler<string>? ModuleNavigationRequested;
         
         public MainLayout()
         {
@@ -54,19 +54,20 @@ namespace Frontend.Components.Layout
             animation.Commit(this, "GlowAnimation", 16, 2000, Easing.SinInOut, null, () => true);
         }
         
-        public void SetUsername(string username)
+        public void SetUserSession(string username, string? token)
         {
             _username = username;
+            _token = token;
             UsernameLabel.Text = username;
             
-            // Initialize the route guard navigator with the username
-            if (Application.Current?.Windows[0]?.Page?.Navigation != null)
+            // Initialize the route guard navigator with the username AND TOKEN
+            if (this.Window?.Page?.Navigation != null)
             {
-                _routeGuardNavigator = new RouteGuardNavigator(Application.Current.Windows[0].Page.Navigation, _username);
+                _routeGuardNavigator = new RouteGuardNavigator(this.Window.Page.Navigation, _username, _token);
             }
         }
         
-        private async void OnToggleSidebarClicked(object sender, EventArgs e)
+        private async void OnToggleSidebarClicked(object? sender, EventArgs e)
         {
             _isSidebarExpanded = !_isSidebarExpanded;
             
@@ -100,10 +101,10 @@ namespace Frontend.Components.Layout
             }
         }
         
-        private async void OnDashboardClicked(object sender, EventArgs e)
+        private async void OnDashboardClicked(object? sender, EventArgs e)
         {
             // First, show the route guard if needed
-            if (_routeGuardNavigator != null)
+            if (_routeGuardNavigator != null && this.Window?.Page?.Navigation != null)
             {
                 var taskCompletionSource = new TaskCompletionSource<bool>();
 
@@ -119,13 +120,11 @@ namespace Frontend.Components.Layout
                     {
                         // On cancel callback
                         taskCompletionSource.SetResult(false);
-                    }
+                    },
+                    _token // Pass token
                 );
 
-                if (Application.Current?.Windows[0]?.Page?.Navigation != null)
-                {
-                    await Application.Current.Windows[0].Page.Navigation.PushModalAsync(routeGuardPage);
-                }
+                await this.Window.Page.Navigation.PushModalAsync(routeGuardPage);
 
                 // Wait for the user to complete the verification
                 bool isAuthorized = await taskCompletionSource.Task;
@@ -157,10 +156,10 @@ namespace Frontend.Components.Layout
             BackupButton.BackgroundColor = Colors.Transparent;
         }
         
-        private async void OnAccountsClicked(object sender, EventArgs e)
+        private async void OnAccountsClicked(object? sender, EventArgs e)
         {
             // First, show the route guard if needed
-            if (_routeGuardNavigator != null)
+            if (_routeGuardNavigator != null && this.Window?.Page?.Navigation != null)
             {
                 var taskCompletionSource = new TaskCompletionSource<bool>();
 
@@ -176,13 +175,11 @@ namespace Frontend.Components.Layout
                     {
                         // On cancel callback
                         taskCompletionSource.SetResult(false);
-                    }
+                    },
+                    _token // Pass token
                 );
 
-                if (Application.Current?.Windows[0]?.Page?.Navigation != null)
-                {
-                    await Application.Current.Windows[0].Page.Navigation.PushModalAsync(routeGuardPage);
-                }
+                await this.Window.Page.Navigation.PushModalAsync(routeGuardPage);
 
                 // Wait for the user to complete the verification
                 bool isAuthorized = await taskCompletionSource.Task;
@@ -214,10 +211,10 @@ namespace Frontend.Components.Layout
             BackupButton.BackgroundColor = Colors.Transparent;
         }
         
-        private async void OnBackupClicked(object sender, EventArgs e)
+        private async void OnBackupClicked(object? sender, EventArgs e)
         {
             // First, show the route guard if needed
-            if (_routeGuardNavigator != null)
+            if (_routeGuardNavigator != null && this.Window?.Page?.Navigation != null)
             {
                 var taskCompletionSource = new TaskCompletionSource<bool>();
                 
@@ -233,14 +230,12 @@ namespace Frontend.Components.Layout
                     {
                         // On cancel callback
                         taskCompletionSource.SetResult(false);
-                    }
+                    },
+                    _token // Pass token
                 );
-                
-                if (Application.Current?.Windows[0]?.Page?.Navigation != null)
-                {
-                    await Application.Current.Windows[0].Page.Navigation.PushModalAsync(routeGuardPage);
-                }
-                
+
+                await this.Window.Page.Navigation.PushModalAsync(routeGuardPage);
+
                 // Wait for the user to complete the verification
                 bool isAuthorized = await taskCompletionSource.Task;
                 
@@ -271,7 +266,7 @@ namespace Frontend.Components.Layout
             BackupButton.BackgroundColor = Color.FromArgb("#333333");
         }
         
-        private void OnLogoutClicked(object sender, EventArgs e)
+        private void OnLogoutClicked(object? sender, EventArgs e)
         {
             // Trigger logout event
             LogoutRequested?.Invoke(this, EventArgs.Empty);

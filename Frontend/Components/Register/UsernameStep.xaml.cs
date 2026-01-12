@@ -26,9 +26,9 @@ public partial class UsernameStep : ContentView
         InitializeComponent();
     }
     
-    private async void OnUsernameChanged(object sender, TextChangedEventArgs e)
+    private async void OnUsernameChanged(object? sender, TextChangedEventArgs e)
     {
-        string username = e.NewTextValue?.Trim();
+        string? username = e.NewTextValue?.Trim();
         
         if (string.IsNullOrEmpty(username))
         {
@@ -84,7 +84,7 @@ public partial class UsernameStep : ContentView
             {
                 var result = await response.Content.ReadFromJsonAsync<UsernameCheckResponse>(cancellationToken: cancellationToken);
                 
-                if (result.IsAvailable)
+                if (result != null && result.IsAvailable)
                 {
                     // Username is valid and available
                     ValidationMessage.Text = "Username is available";

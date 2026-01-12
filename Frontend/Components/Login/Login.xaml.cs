@@ -5,7 +5,17 @@ namespace Frontend.Components.Login;
 
 public partial class Login : ContentView
 {
-    public event EventHandler<bool>? LoginCompleted;
+    // Custom event args to pass login data
+    public class LoginSuccessEventArgs : EventArgs
+    {
+        public bool Success { get; set; }
+        public string? Token { get; set; }
+        public string? Username { get; set; }
+        public string? DatabaseName { get; set; }
+        public string? Timezone { get; set; }
+    }
+
+    public event EventHandler<LoginSuccessEventArgs>? LoginCompleted;
     public event EventHandler? RegisterRequested;
 
     public Login()
@@ -13,7 +23,7 @@ public partial class Login : ContentView
         InitializeComponent();
     }
     
-    private void OnTogglePasswordVisibility(object sender, EventArgs e)
+    private void OnTogglePasswordVisibility(object? sender, EventArgs e)
     {
         // Toggle password visibility
         PasswordEntry.IsPassword = !PasswordEntry.IsPassword;
@@ -24,7 +34,14 @@ public partial class Login : ContentView
         TogglePasswordLabel.TextColor = PasswordEntry.IsPassword ? Colors.White : Color.FromArgb("#00e5ff");
     }
 
-    private async void OnLoginClicked(object sender, EventArgs e)
+
+
+    private void OnStayLoggedInTapped(object? sender, EventArgs e)
+    {
+        StayLoggedInCheckbox.IsChecked = !StayLoggedInCheckbox.IsChecked;
+    }
+
+    private async void OnLoginClicked(object? sender, EventArgs e)
     {
         if (string.IsNullOrWhiteSpace(UsernameEntry.Text) || string.IsNullOrWhiteSpace(PasswordEntry.Text))
         {
@@ -51,31 +68,47 @@ public partial class Login : ContentView
             
             if (response.IsSuccessStatusCode)
             {
-                // Login successful
                 var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
                 
-                // Store the token securely
-                await SecureStorage.SetAsync("auth_token", result.Token);
-                
-                // Store the username
-                await SecureStorage.SetAsync("username", UsernameEntry.Text);
-                
-                // Store the database name if available
-                if (!string.IsNullOrEmpty(result.DatabaseName))
+                if (result != null && !string.IsNullOrEmpty(result.Token))
                 {
-                    await SecureStorage.SetAsync("database_name", result.DatabaseName);
-                    Console.WriteLine($"Stored database name in secure storage: {result.DatabaseName}");
+                    // Only store securely if "Stay Logged In" is checked
+                    if (StayLoggedInCheckbox.IsChecked)
+                    {
+                        await SecureStorage.SetAsync("auth_token", result.Token);
+                        await SecureStorage.SetAsync("username", UsernameEntry.Text);
+                        
+                        if (!string.IsNullOrEmpty(result.DatabaseName))
+                            await SecureStorage.SetAsync("database_name", result.DatabaseName);
+                            
+                        if (!string.IsNullOrEmpty(result.Timezone))
+                            await SecureStorage.SetAsync("timezone", result.Timezone);
+                    }
+                    else 
+                    {
+                        // Ensure storage is clear if they didn't check it (safety)
+                        SecureStorage.Remove("auth_token");
+                        SecureStorage.Remove("username");
+                        SecureStorage.Remove("database_name");
+                        SecureStorage.Remove("timezone");
+                    }
+                    
+                    // Signal successful login with data
+                    LoginCompleted?.Invoke(this, new LoginSuccessEventArgs 
+                    { 
+                        Success = true,
+                        Token = result.Token,
+                        Username = UsernameEntry.Text,
+                        DatabaseName = result.DatabaseName,
+                        Timezone = result.Timezone
+                    });
                 }
-
-                // Store the timezone if available
-                if (!string.IsNullOrEmpty(result.Timezone))
+                else
                 {
-                    await SecureStorage.SetAsync("timezone", result.Timezone);
-                    Console.WriteLine($"Stored timezone in secure storage: {result.Timezone}");
+                    StatusLabel.Text = "Invalid response from server.";
+                    StatusLabel.IsVisible = true;
+                    LoginCompleted?.Invoke(this, new LoginSuccessEventArgs { Success = false });
                 }
-                
-                // Signal successful login
-                LoginCompleted?.Invoke(this, true);
             }
             else
             {
@@ -83,14 +116,14 @@ public partial class Login : ContentView
                 var errorDetails = await response.Content.ReadAsStringAsync();
                 StatusLabel.Text = "Invalid username/email or password";
                 StatusLabel.IsVisible = true;
-                LoginCompleted?.Invoke(this, false);
+                LoginCompleted?.Invoke(this, new LoginSuccessEventArgs { Success = false });
             }
         }
         catch (Exception ex)
         {
             StatusLabel.Text = $"Error: {ex.Message}";
             StatusLabel.IsVisible = true;
-            LoginCompleted?.Invoke(this, false);
+            LoginCompleted?.Invoke(this, new LoginSuccessEventArgs { Success = false });
         }
         finally
         {
@@ -99,7 +132,7 @@ public partial class Login : ContentView
         }
     }
 
-    private void OnRegisterTapped(object sender, EventArgs e)
+    private void OnRegisterTapped(object? sender, EventArgs e)
     {
         // Trigger event to notify parent that user wants to register
         RegisterRequested?.Invoke(this, EventArgs.Empty);

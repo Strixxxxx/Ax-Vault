@@ -26,9 +26,9 @@ public partial class EmailStep : ContentView
         InitializeComponent();
     }
     
-    private async void OnEmailChanged(object sender, TextChangedEventArgs e)
+    private async void OnEmailChanged(object? sender, TextChangedEventArgs e)
     {
-        string email = e.NewTextValue?.Trim();
+        string? email = e.NewTextValue?.Trim();
         
         if (string.IsNullOrEmpty(email))
         {
@@ -72,7 +72,7 @@ public partial class EmailStep : ContentView
             {
                 var result = await response.Content.ReadFromJsonAsync<EmailCheckResponse>(cancellationToken: cancellationToken);
                 
-                if (result.IsAvailable)
+                if (result != null && result.IsAvailable)
                 {
                     // Email is valid and available
                     ValidationMessage.Text = "Email is available";

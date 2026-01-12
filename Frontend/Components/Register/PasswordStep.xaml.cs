@@ -36,7 +36,7 @@ public partial class PasswordStep : ContentView
         InitializeComponent();
     }
     
-    private void OnPasswordChanged(object sender, TextChangedEventArgs e)
+    private void OnPasswordChanged(object? sender, TextChangedEventArgs e)
     {
         string password = e.NewTextValue ?? string.Empty;
         string uniqueKey = UniqueKeyEntry.Text ?? string.Empty;
@@ -83,7 +83,7 @@ public partial class PasswordStep : ContentView
         ValidationChanged?.Invoke(this, IsValid);
     }
     
-    private void OnConfirmPasswordChanged(object sender, TextChangedEventArgs e)
+    private void OnConfirmPasswordChanged(object? sender, TextChangedEventArgs e)
     {
         CheckPasswordsMatch();
         
@@ -91,7 +91,7 @@ public partial class PasswordStep : ContentView
         ValidationChanged?.Invoke(this, IsValid);
     }
     
-    private void OnUniqueKeyChanged(object sender, TextChangedEventArgs e)
+    private void OnUniqueKeyChanged(object? sender, TextChangedEventArgs e)
     {
         string uniqueKey = e.NewTextValue?.Trim() ?? string.Empty;
         string password = PasswordEntry.Text ?? string.Empty;

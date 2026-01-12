@@ -27,8 +27,8 @@ namespace Frontend.Components.Dashboard
                 OnPropertyChanged(nameof(PlatformItems));
             }
         }
-        private string _username;
-        private string _databaseName;
+        private string _username = string.Empty;
+        private string _databaseName = string.Empty;
         private const int MaxRetries = 3;
         private const int RetryDelayMs = 1000;
         
@@ -73,7 +73,7 @@ namespace Frontend.Components.Dashboard
                     
                     if (attempt == MaxRetries)
                     {
-                        await Application.Current.MainPage.Dispatcher.DispatchAsync(() =>
+                        await Dispatcher.DispatchAsync(() =>
                         {
                             ErrorMessageLabel.Text = "Could not connect to the server. Please ensure the backend service is running.";
                             ErrorMessageLabel.IsVisible = true;
@@ -129,7 +129,7 @@ namespace Frontend.Components.Dashboard
                         }
                         
                         // Hide loading and error indicators
-                        await Application.Current.MainPage.Dispatcher.DispatchAsync(() =>
+                        await Dispatcher.DispatchAsync(() =>
                         {
                             LoadingIndicator.IsVisible = false;
                             LoadingIndicator.IsRunning = false;
@@ -140,7 +140,7 @@ namespace Frontend.Components.Dashboard
                     else
                     {
                         Console.WriteLine("No platforms found in the database.");
-                        await Application.Current.MainPage.Dispatcher.DispatchAsync(() =>
+                        await Dispatcher.DispatchAsync(() =>
                         {
                             LoadingIndicator.IsVisible = false;
                             LoadingIndicator.IsRunning = false;
