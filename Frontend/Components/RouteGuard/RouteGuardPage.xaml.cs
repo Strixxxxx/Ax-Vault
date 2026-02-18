@@ -55,14 +55,11 @@ namespace Frontend.Components.RouteGuard
         {
             try
             {
-                string uniqueKey = UniqueKeyEntry.Text;
-                Console.WriteLine("--- ROUTE GUARD UI ---");
-                Console.WriteLine($"Captured unique key for validation. Length: {uniqueKey?.Length ?? 0}");
-
-                if (string.IsNullOrEmpty(uniqueKey))
+                string vaultPassword = VaultPasswordEntry.Text;
+                
+                if (string.IsNullOrEmpty(vaultPassword))
                 {
-                    Console.WriteLine("ERROR: Unique key is empty");
-                    ErrorMessage = "Please enter your unique key";
+                    ErrorMessage = "Please enter your vault password";
                     OnPropertyChanged(nameof(ErrorMessage));
                     OnPropertyChanged(nameof(HasError));
                     return;
@@ -73,27 +70,25 @@ namespace Frontend.Components.RouteGuard
                 OnPropertyChanged(nameof(IsBusy));
                 OnPropertyChanged(nameof(IsNotBusy));
                 
-                Console.WriteLine($"Starting validation for username: {_username}, module: {_targetModule}");
-                
                 // Add a small delay to show loading state
                 await Task.Delay(500);
                 
                 // Validate access with the backend
-                bool isAuthorized = await _routeGuardService.ValidateModuleAccess(_username, uniqueKey, _targetModule, _token);
-                Console.WriteLine($"Validation result from service: {isAuthorized}");
+                bool isAuthorized = await _routeGuardService.ValidateModuleAccess(_username, vaultPassword, _targetModule, _token);
                 
                 if (isAuthorized)
                 {
+                    // Update session service with the vault password (Zero-Knowledge v2)
+                    Frontend.Services.SessionService.Instance.VaultPassword = vaultPassword;
+
                     // Access granted - continue to the module
-                    Console.WriteLine("Access granted, proceeding to module");
                     _onSuccessCallback?.Invoke();
                     await Navigation.PopModalAsync();
                 }
                 else
                 {
                     // Access denied - show error
-                    Console.WriteLine("Access denied, showing error in UI");
-                    ErrorMessage = "Invalid unique key. Please try again.";
+                    ErrorMessage = "Invalid vault password. Please try again";
                     OnPropertyChanged(nameof(ErrorMessage));
                     OnPropertyChanged(nameof(HasError));
                 }
@@ -121,6 +116,11 @@ namespace Frontend.Components.RouteGuard
         {
             _onCancelCallback?.Invoke();
             await Navigation.PopModalAsync();
+        }
+
+        private void OnVaultPasswordEntryCompleted(object? sender, EventArgs e)
+        {
+            OnVerifyClicked(this, EventArgs.Empty);
         }
     }
 } 

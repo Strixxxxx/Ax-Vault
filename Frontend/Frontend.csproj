@@ -11,6 +11,7 @@
 		<Nullable>enable</Nullable>
 		<EnablePreviewFeatures>true</EnablePreviewFeatures>
 		<WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+		<MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
 
 		<!-- Display name -->
 		<ApplicationTitle>Ax Vault</ApplicationTitle>

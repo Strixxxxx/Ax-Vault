@@ -37,7 +37,8 @@
                PlaceholderColor="#7f7f7f"
                BackgroundColor="#2a2a2a"
                TextColor="White"
-               Margin="0,5,0,0"/>
+               Margin="0,5,0,0"
+               Completed="OnLoginClicked"/>
         
         <!-- Password entry with visibility toggle -->
         <Grid Grid.Row="3" Margin="0,5,0,0">
@@ -46,11 +47,12 @@
                    PlaceholderColor="#7f7f7f"
                    BackgroundColor="#2a2a2a"
                    TextColor="White"
-                   IsPassword="true"/>
+                   IsPassword="true"
+                   Completed="OnLoginClicked"/>
             
         <Label x:Name="TogglePasswordLabel"
             Text="&#xe8f4;"
-            TextColor="White"
+            TextColor="#00e5ff"
             FontSize="24"
             HorizontalOptions="End"
             VerticalOptions="Center"

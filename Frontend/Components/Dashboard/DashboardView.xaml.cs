@@ -12,6 +12,9 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using Microsoft.Maui.Devices;
 using Frontend.Services;
+using Frontend.Models;
+using Frontend.Components.Modals; // Added
+using Frontend.Components.Layout; // Added
 
 namespace Frontend.Components.Dashboard
 {
@@ -27,11 +30,13 @@ namespace Frontend.Components.Dashboard
                 OnPropertyChanged(nameof(PlatformItems));
             }
         }
+        private ObservableCollection<PlatformItem> _allPlatformItems = new ObservableCollection<PlatformItem>(); // Added for search functionality
         private string _username = string.Empty;
-        private string _databaseName = string.Empty;
         private const int MaxRetries = 3;
         private const int RetryDelayMs = 1000;
-        
+        // private bool _isVaultPasswordPromptActive = false; // Removed to resolve CS0414 warning
+        private MainLayout? _parentLayout; // Store reference to parent layout
+
         public DashboardView()
         {
             InitializeComponent();
@@ -43,22 +48,52 @@ namespace Frontend.Components.Dashboard
             BindingContext = this;
         }
         
-        public void Initialize(string username, string databaseName)
+        public void Initialize(string username, MainLayout parentLayout)
         {
-            _username = username;
-            _databaseName = databaseName;
-            
+            _username = username; // Update username
+            _parentLayout = parentLayout; // Store parent layout reference
+
             // Load data from the API
-            LoadPlatformDataWithRetry();
+            _ = LoadPlatformDataWithRetry();
         }
         
-        private async void LoadPlatformDataWithRetry()
+        public async Task LoadPlatformDataWithRetry()
         {
             // Show loading indicator and hide error messages
             LoadingIndicator.IsVisible = true;
             LoadingIndicator.IsRunning = true;
             ErrorMessageLabel.IsVisible = false;
             NoPlatformsLabel.IsVisible = false;
+
+            // Check if VaultPassword is set
+            if (string.IsNullOrEmpty(SessionService.Instance.VaultPassword))
+            {
+                // Use RouteGuardNavigator for vault password verification
+                var routeGuardNavigator = new RouteGuardNavigator(
+                    Application.Current!.Windows[0].Page!.Navigation,
+                    _username,
+                    SessionService.Instance.AuthToken
+                );
+
+                // Define dummy page for navigation, as we only need the modal functionality
+                var dummyPage = new ContentPage(); 
+
+                await routeGuardNavigator.NavigateToAsync(dummyPage, "Dashboard");
+
+                // After RouteGuardPage closes, check if vault password is now set
+                if (!string.IsNullOrEmpty(SessionService.Instance.VaultPassword))
+                {
+                    await LoadPlatformDataWithRetry(); // Retry loading after password is set
+                }
+                else
+                {
+                    LoadingIndicator.IsVisible = false;
+                    LoadingIndicator.IsRunning = false;
+                    ErrorMessageLabel.Text = "Vault password entry cancelled or failed.";
+                    ErrorMessageLabel.IsVisible = true;
+                }
+                return; 
+            }
 
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
@@ -87,6 +122,18 @@ namespace Frontend.Components.Dashboard
                         await Task.Delay(RetryDelayMs * attempt * attempt);
                     }
                 }
+                catch (Exception ex)
+                {
+                    // Handle other exceptions during password verification or data loading
+                    await Dispatcher.DispatchAsync(() =>
+                    {
+                        ErrorMessageLabel.Text = $"An unexpected error occurred: {ex.Message}";
+                        ErrorMessageLabel.IsVisible = true;
+                        LoadingIndicator.IsVisible = false;
+                        LoadingIndicator.IsRunning = false;
+                    });
+                    return;
+                }
             }
         }
         
@@ -94,41 +141,60 @@ namespace Frontend.Components.Dashboard
         {
             // Clear any existing data
             PlatformItems.Clear();
+            _allPlatformItems.Clear(); // Clear all items for fresh load
             
             // Log connection info
-            Console.WriteLine($"Loading platforms with username: {_username}, database: {_databaseName}");
-            Console.WriteLine($"API base URL: {ApiClient.Instance.BaseAddress}");
+            Console.WriteLine($"Loading platforms for user: {_username}");
             
             try
             {
-                // Create a new request message to add custom per-request headers
-                var request = new HttpRequestMessage(HttpMethod.Get, "api/platform");
-                request.Headers.Add("X-Username", _username);
-                request.Headers.Add("X-Database-Name", _databaseName);
-                
-                // Log the request
-                Console.WriteLine($"Sending GET request to: {ApiClient.Instance.BaseAddress}api/platform");
+                string? token = SessionService.Instance.AuthToken;
+                string? username = SessionService.Instance.Username;
+                string? vaultPassword = SessionService.Instance.VaultPassword; // Get VaultPassword
+
+                if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(vaultPassword))
+                {
+                    PlatformItems.Clear();
+                    _allPlatformItems.Clear();
+                    await Dispatcher.DispatchAsync(() =>
+                    {
+                        LoadingIndicator.IsVisible = false;
+                        LoadingIndicator.IsRunning = false;
+                        NoPlatformsLabel.IsVisible = true;
+                        NoPlatformsLabel.Text = "Please log in and enter vault password to view platforms and accounts.";
+                    });
+                    return;
+                }
+
+                // Create a new request message to get platforms
+                var platformRequest = new HttpRequestMessage(HttpMethod.Get, "api/platforms");
                 
                 // Fetch platforms from the API
-                var response = await ApiClient.Instance.SendAsync(request);
+                var platformResponse = await ApiClient.Instance.SendAsync(platformRequest);
                 
-                Console.WriteLine($"API Response Status: {response.StatusCode}");
-                
-                if (response.IsSuccessStatusCode)
+                if (platformResponse.IsSuccessStatusCode)
                 {
-                    var platforms = await response.Content.ReadFromJsonAsync<List<PlatformApiModel>>();
-                    
-                    Console.WriteLine($"Received {platforms?.Count ?? 0} platforms from API");
+                    var platforms = await platformResponse.Content.ReadFromJsonAsync<List<PlatformApiModel>>();
                     
                     if (platforms != null && platforms.Any())
                     {
                         foreach (var platform in platforms)
                         {
-                            Console.WriteLine($"Adding platform: {platform.Name} with {platform.AccountCount} accounts");
-                            PlatformItems.Add(new PlatformItem("📁", platform.Name, platform.AccountCount));
+                            string displayName = FormatPlatformName(platform.Name);
+                            var platformItem = new PlatformItem("📁", displayName, platform.AccountCount)
+                            {
+                                ViewAccountsCommand = new Command<PlatformItem>(async (p) => await OnPlatformSelected(p))
+                            };
+                            
+                            _allPlatformItems.Add(platformItem); // Add to master list
                         }
                         
-                        // Hide loading and error indicators
+                        // Populate the displayed list from the master list initially
+                        foreach (var item in _allPlatformItems)
+                        {
+                            PlatformItems.Add(item);
+                        }
+
                         await Dispatcher.DispatchAsync(() =>
                         {
                             LoadingIndicator.IsVisible = false;
@@ -139,7 +205,6 @@ namespace Frontend.Components.Dashboard
                     }
                     else
                     {
-                        Console.WriteLine("No platforms found in the database.");
                         await Dispatcher.DispatchAsync(() =>
                         {
                             LoadingIndicator.IsVisible = false;
@@ -151,51 +216,62 @@ namespace Frontend.Components.Dashboard
                 }
                 else
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    throw new HttpRequestException($"Error fetching platforms: {response.StatusCode}, {errorContent}");
+                    var errorContent = await platformResponse.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Error fetching platforms: {platformResponse.StatusCode}, {errorContent}");
                 }
             }
+
             catch (Exception ex)
             {
                 Console.WriteLine($"Error in LoadPlatformDataAsync: {ex.Message}");
-                throw; // Rethrow to be handled by retry logic
+                throw;
             }
         }
+
+        private async Task OnPlatformSelected(PlatformItem platform)
+        {
+            var modal = new DashboardAccountListModal(platform); // Corrected constructor
+            _parentLayout?.ShowModal(modal); // Use parent layout's ShowModal
+        }
+
+        private string FormatPlatformName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+
+            // The backend is now returning clean platform names from the Vaults table.
+            // This method might not be needed anymore, or can be used for other formatting.
+            return name;
+        }
         
+        private void OnSearchEntryTextChanged(object? sender, TextChangedEventArgs e)
+        {
+            var searchText = e.NewTextValue?.ToLowerInvariant() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(searchText))
+            {
+                // If search text is empty, show all items
+                PlatformItems.Clear();
+                foreach (var item in _allPlatformItems)
+                {
+                    PlatformItems.Add(item);
+                }
+            }
+            else
+            {
+                // Filter items based on search text
+                var filteredItems = _allPlatformItems.Where(p => p.Name.ToLowerInvariant().Contains(searchText)).ToList();
+                PlatformItems.Clear();
+                foreach (var item in filteredItems)
+                {
+                    PlatformItems.Add(item);
+                }
+            }
+        }
+
         private void RemoveStaticCards()
         {
             // This method is no longer needed since we removed the static cards from the XAML
         }
-    }
-    
-    public class PlatformItem
-    {
-        public string Icon { get; set; }
-        public string Name { get; set; }
-        public int AccountCount { get; set; }
-        public ICommand ViewCommand { get; set; }
-        
-        public PlatformItem(string icon, string name, int accountCount)
-        {
-            Icon = icon;
-            Name = name;
-            AccountCount = accountCount;
-            ViewCommand = new Command(ExecuteViewCommand);
-        }
-        
-        private void ExecuteViewCommand()
-        {
-            // Navigate to accounts view for this platform
-            // This would be implemented to navigate to the accounts page filtered by this platform
-            Shell.Current.GoToAsync($"//accounts?platform={Uri.EscapeDataString(Name)}");
-        }
-    }
-
-    // Add this class to represent the platform data returned from the API
-    public class PlatformApiModel
-    {
-        public string Name { get; set; } = string.Empty;
-        public int AccountCount { get; set; }
     }
 }
  

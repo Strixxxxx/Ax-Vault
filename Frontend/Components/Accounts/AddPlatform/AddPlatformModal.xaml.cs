@@ -6,14 +6,12 @@ using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Devices;
 using Frontend.Services;
+using Frontend.Components.Toasts; // Added
 
 namespace Frontend.Components.Accounts.AddPlatform
 {
     public partial class AddPlatformModal : ContentPage
     {
-        private string? _username;
-        private string? _databaseName;
-        
         // Event to notify parent that platform was created
         public event EventHandler<bool>? PlatformCreated;
 
@@ -25,44 +23,22 @@ namespace Frontend.Components.Accounts.AddPlatform
             CreateButton.Clicked += OnCreateButtonClicked;
         }
 
-        protected override async void OnAppearing()
-        {
-            base.OnAppearing();
-            await LoadAsync();
-        }
-        
-        private async Task LoadAsync()
-        {
-            // Get the username and database name from secure storage properly with async/await
-            _username = await SecureStorage.GetAsync("username");
-            _databaseName = await SecureStorage.GetAsync("database_name");
-            
-            // Log that we retrieved the user info
-            Console.WriteLine($"Retrieved username from secure storage: {(_username ?? "null")}");
-            Console.WriteLine($"Retrieved database name from secure storage: {(_databaseName ?? "null")}");
-        }
+
 
         private async void OnCreateButtonClicked(object? sender, EventArgs e)
         {
             // Validate inputs
             if (string.IsNullOrWhiteSpace(PlatformNameEntry.Text))
             {
-                await DisplayAlert("Validation Error", "Platform name is required.", "OK");
+                ToastService.ShowToast("Platform name is required.", ToastType.Error);
                 return;
             }
             
-            // Check if username is available - no fallback
-            if (string.IsNullOrEmpty(_username))
+            // Check if user is logged in
+            if (!SessionService.Instance.IsLoggedIn)
             {
-                await DisplayAlert("Authentication Error", "User not authenticated. Please log in again to create platforms.", "OK");
+                ToastService.ShowToast("User not authenticated. Please log in again to create platforms.", ToastType.Error);
                 await Navigation.PopModalAsync(); // Close the modal since user can't proceed
-                return;
-            }
-            
-            // Check if we have a database name
-            if (string.IsNullOrEmpty(_databaseName))
-            {
-                await DisplayAlert("Configuration Error", "Database name not found. Please log out and log in again.", "OK");
                 return;
             }
 
@@ -80,19 +56,19 @@ namespace Frontend.Components.Accounts.AddPlatform
                 
                 if (response.IsSuccess)
                 {
-                    await DisplayAlert("Success", "Platform added successfully.", "OK");
+                    ToastService.ShowToast("Your new platform has been successfully created!", ToastType.Success);
                     PlatformCreated?.Invoke(this, true);
                     await Navigation.PopModalAsync(); // Close the modal
                 }
                 else
                 {
                     // Display detailed error message
-                    await DisplayAlert("Error", $"Failed to add platform: {response.ErrorMessage}", "OK");
+                    ToastService.ShowToast($"Failed to add platform: {response.ErrorMessage}", ToastType.Error);
                 }
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
+                ToastService.ShowToast($"An error occurred: {ex.Message}", ToastType.Error);
             }
         }
 
@@ -103,34 +79,19 @@ namespace Frontend.Components.Accounts.AddPlatform
                 var json = JsonSerializer.Serialize(platform);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 
-                // Add username and database_name to headers
+                string? token = SessionService.Instance.AuthToken;
+                string? username = SessionService.Instance.Username;
+
+                if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(username))
+                {
+                    return new PlatformResponse { IsSuccess = false, ErrorMessage = "You are not logged in." };
+                }
+
+                // Create HTTP request
                 var request = new HttpRequestMessage(HttpMethod.Post, "api/platform");
                 request.Content = content;
-                request.Headers.Add("X-Username", _username);
-                
-                // Add database name to headers if available
-                if (!string.IsNullOrEmpty(_databaseName))
-                {
-                    request.Headers.Add("X-Database-Name", _databaseName);
-                    Console.WriteLine($"Added X-Database-Name header: {_databaseName}");
-                }
-                else
-                {
-                    Console.WriteLine("WARNING: No database name available to add to headers!");
-                }
-                
-                // Add some diagnostic output
-                Console.WriteLine($"Sending platform creation request - Username: {_username}, Database: {_databaseName}, Platform: {platform.Name}, URL: {ApiClient.Instance.BaseAddress}api/platform");
-                
-                // Display network activity indicator (if available on the platform)
-                if (DeviceInfo.Platform == DevicePlatform.iOS)
-                {
-                    Dispatcher.Dispatch(() => { 
-                        try {
-                            this.IsBusy = true;
-                        } catch { /* ignore */ }
-                    });
-                }
+                request.Headers.Add("X-Username", username);
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                 
                 try
                 {

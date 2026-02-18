@@ -4,161 +4,314 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
-using Backend.Services; // Add the services namespace
+using Backend.Services;
+using Backend.Data;
+using Backend.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
+using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 
 namespace Backend.Controllers.Accounts
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/accounts")]
+    [Authorize]
     public class AccountController : ControllerBase
     {
-        private readonly IConfiguration _configuration;
+        private readonly ILogger<AccountController> _logger;
+        private readonly ApplicationDbContext _context;
+        private readonly EncryptionService _encryptionService;
+        private readonly PlatformTableService _platformTableService;
 
-        public AccountController(IConfiguration configuration)
+        public AccountController(
+            ILogger<AccountController> logger, 
+            ApplicationDbContext context,
+            PlatformTableService platformTableService,
+            EncryptionService encryptionService)
         {
-            _configuration = configuration;
+            _logger = logger;
+            _context = context;
+            _platformTableService = platformTableService;
+            _encryptionService = encryptionService;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateAccount([FromBody] AccountModel model, [FromHeader(Name = "X-Username")] string username)
+        private async Task<User?> GetCurrentUserAsync()
+        {
+            // Try different claim types to be robust
+            var usernameClaim = User.Identity?.Name;
+            if (string.IsNullOrEmpty(usernameClaim))
+            {
+                usernameClaim = User.Claims.FirstOrDefault(c => c.Type == "sub" || c.Type == JwtRegisteredClaimNames.Sub || c.Type == ClaimTypes.NameIdentifier)?.Value;
+            }
+            if (string.IsNullOrEmpty(usernameClaim))
+            {
+                usernameClaim = User.Claims.FirstOrDefault(c => c.Type == "unique_name" || c.Type == JwtRegisteredClaimNames.UniqueName || c.Type == ClaimTypes.Name)?.Value;
+            }
+
+            if (string.IsNullOrEmpty(usernameClaim)) 
+            {
+                _logger.LogWarning("AccountController: No identity claim found in token.");
+                _logger.LogWarning("AccountController: Listing all available claims for debugging:");
+                foreach (var claim in User.Claims)
+                {
+                    _logger.LogWarning("AccountController: Claim: Type={Type}, Value={Value}", claim.Type, claim.Value);
+                }
+                return null;
+            }
+
+            var fixedSalt = PasswordHasher.GetDeterministicSalt();
+            var inputHash = PasswordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
+            if (user == null)
+            {
+                _logger.LogWarning("AccountController: No user found for identity {usernameClaim}", usernameClaim);
+            }
+
+            return user;
+        }
+
+        [HttpPost("list")]
+        public async Task<IActionResult> ListAccounts([FromBody] AccountListRequest request)
         {
             try
             {
-                if (!ModelState.IsValid)
+                var user = await GetCurrentUserAsync();
+                if (user == null) return Unauthorized(new { Message = "User identity not found." });
+
+                // Derive key to decrypt usernames
+                var salt = PasswordHasher.GetDeterministicSalt();
+                var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
+
+                string tableName = $"{user.AccountID}_{request.Platform}";
+                var accounts = new List<AccountResponseModel>();
+
+                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
                 {
-                    return BadRequest(ModelState);
+                    await connection.OpenAsync();
+                    string query = $"SELECT PlatformID, username, password, description, created_at FROM [{tableName}]";
+                    
+                    using var command = new SqlCommand(query, connection);
+                    using var reader = await command.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        string encryptedUsername = reader.GetString(1);
+                        string decryptedUsername = _encryptionService.Decrypt(encryptedUsername, vaultKey);
+
+                        accounts.Add(new AccountResponseModel
+                        {
+                            Id = reader.GetInt64(0),
+                            Username = decryptedUsername,
+                            Password = reader.GetString(2), // Keep encrypted
+                            Description = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            CreatedAt = reader.GetDateTime(4),
+                            TimeZoneId = user.Timezone // Include the user's timezone
+                        });
+                    }
                 }
 
-                // Use the username from header instead of claims
-                if (string.IsNullOrEmpty(username))
-                {
-                    return Unauthorized("Username not provided.");
-                }
-
-                // Get the database name for the user from the Accounts table in master database using username
-                string? dbName = await GetUserDatabaseNameByUsername(username);
-                if (string.IsNullOrEmpty(dbName))
-                {
-                    return NotFound("User database not found.");
-                }
-
-                // Create the table in the user's database if it doesn't exist
-                await EnsureAccountTableExists(dbName);
-
-                // Insert the account into the table
-                bool result = await InsertAccount(dbName, model);
-                if (!result)
-                {
-                    return StatusCode(500, "Failed to create account.");
-                }
-
-                return Ok(new { message = "Account created successfully." });
+                return Ok(accounts);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                _logger.LogError(ex, "Error listing accounts");
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
-        private async Task<string?> GetUserDatabaseNameByUsername(string username)
+        [HttpPost("add")]
+        public async Task<IActionResult> AddAccount([FromBody] AddAccountRequest request)
         {
-            // Use the centralized ConnectionHelper to get the master database connection string
-            string connectionString = ConnectionHelper.GetMasterConnectionString();
-            string? dbName = null;
-
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            try
             {
-                await connection.OpenAsync();
+                var user = await GetCurrentUserAsync();
+                if (user == null) return Unauthorized(new { Message = "User identity not found." });
+
+                var salt = PasswordHasher.GetDeterministicSalt();
+                var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
+
+                string encryptedUsername = _encryptionService.Encrypt(request.Username, vaultKey);
+                string encryptedPassword = _encryptionService.Encrypt(request.Password, vaultKey);
+
+                string tableName = $"{user.AccountID}_{request.Platform}";
                 
-                // Changed query to search by username instead of user_id
-                string query = "SELECT [Database Name] FROM Accounts WHERE username = @Username";
-                
-                using (SqlCommand command = new SqlCommand(query, connection))
+                string query = $@"
+                    INSERT INTO [{tableName}] (username, password, description, created_at)
+                    VALUES (@Username, @Password, @Description, GETUTCDATE())";
+
+                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
                 {
-                    command.Parameters.AddWithValue("@Username", username);
-                    var result = await command.ExecuteScalarAsync();
-                    
-                    dbName = result?.ToString();
-                }
-            }
+                    await connection.OpenAsync();
+                    using var command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Username", encryptedUsername);
+                    command.Parameters.AddWithValue("@Password", encryptedPassword);
+                    command.Parameters.AddWithValue("@Description", (object?)request.Description ?? DBNull.Value);
 
-            return dbName;
-        }
-
-        private async Task EnsureAccountTableExists(string dbName)
-        {
-            // Use the centralized ConnectionHelper to get the user-specific database connection string
-            string connectionString = ConnectionHelper.GetUserDbConnectionString(dbName);
-
-            using (SqlConnection connection = new SqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                
-                string query = @"
-                    IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'Accounts')
-                    BEGIN
-                        CREATE TABLE Accounts (
-                            Id INT IDENTITY(1,1) PRIMARY KEY,
-                            platform NVARCHAR(50) NOT NULL,
-                            username NVARCHAR(50) NOT NULL,
-                            password NVARCHAR(255) NOT NULL,
-                            description NVARCHAR(MAX),
-                            created_at DATETIME DEFAULT GETDATE()
-                        )
-                    END";
-                
-                using (SqlCommand command = new SqlCommand(query, connection))
-                {
                     await command.ExecuteNonQueryAsync();
                 }
+
+                return Ok(new { Message = "Account added to platform." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding account");
+                return StatusCode(500, new { Message = ex.Message });
             }
         }
 
-        private async Task<bool> InsertAccount(string dbName, AccountModel model)
+        [HttpPut("edit")]
+        public async Task<IActionResult> EditAccount([FromBody] EditAccountRequest request)
         {
-            // Use the centralized ConnectionHelper to get the user-specific database connection string
-            string connectionString = ConnectionHelper.GetUserDbConnectionString(dbName);
-
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            try
             {
-                await connection.OpenAsync();
+                var user = await GetCurrentUserAsync();
+                if (user == null) return Unauthorized(new { Message = "User identity not found." });
+
+                var salt = PasswordHasher.GetDeterministicSalt();
+                var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
+
+                string encryptedUsername = _encryptionService.Encrypt(request.Username, vaultKey);
+                string encryptedPassword = _encryptionService.Encrypt(request.Password, vaultKey);
+
+                string tableName = $"{user.AccountID}_{request.Platform}";
                 
-                string query = @"
-                    INSERT INTO Accounts (platform, username, password, description, created_at)
-                    VALUES (@Platform, @Username, @Password, @Description, @CreatedAt)";
-                
-                using (SqlCommand command = new SqlCommand(query, connection))
+                string query = $@"
+                    UPDATE [{tableName}] 
+                    SET username = @Username, password = @Password, description = @Description
+                    WHERE PlatformID = @Id";
+
+                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
                 {
-                    command.Parameters.AddWithValue("@Platform", model.Platform);
-                    command.Parameters.AddWithValue("@Username", model.Username);
-                    command.Parameters.AddWithValue("@Password", model.Password);
-                    command.Parameters.AddWithValue("@Description", (object)model.Description ?? DBNull.Value);
-                    command.Parameters.AddWithValue("@CreatedAt", DateTime.Now); // Use current time instead of timezone conversion
-                    
-                    int rowsAffected = await command.ExecuteNonQueryAsync();
-                    return rowsAffected > 0;
+                    await connection.OpenAsync();
+                    using var command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Id", request.Id);
+                    command.Parameters.AddWithValue("@Username", encryptedUsername);
+                    command.Parameters.AddWithValue("@Password", encryptedPassword);
+                    command.Parameters.AddWithValue("@Description", (object?)request.Description ?? DBNull.Value);
+
+                    int affected = await command.ExecuteNonQueryAsync();
+                    if (affected == 0) return NotFound("Account row not found.");
+                }
+
+                return Ok(new { Message = "Account updated." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error editing account");
+                return StatusCode(500, new { Message = ex.Message });
+            }
+        }
+
+        [HttpPost("delete")]
+        public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest request)
+        {
+            try
+            {
+                var user = await GetCurrentUserAsync();
+                if (user == null) return Unauthorized(new { Message = "User identity not found." });
+
+                string tableName = $"{user.AccountID}_{request.Platform}";
+                string query = $"DELETE FROM [{tableName}] WHERE PlatformID = @Id";
+
+                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                {
+                    await connection.OpenAsync();
+                    using var command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Id", request.Id);
+
+                    int affected = await command.ExecuteNonQueryAsync();
+                    if (affected == 0) return NotFound("Account row not found.");
+                }
+
+                return Ok(new { Message = "Account deleted." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting account");
+                return StatusCode(500, new { Message = ex.Message });
+            }
+        }
+
+        [HttpPost("decrypt-password")]
+        public async Task<IActionResult> DecryptPassword([FromBody] DecryptPasswordRequest request)
+        {
+            try
+            {
+                var user = await GetCurrentUserAsync();
+                if (user == null) return Unauthorized(new { Message = "User identity not found." });
+
+                var salt = PasswordHasher.GetDeterministicSalt();
+                var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
+
+                string tableName = $"{user.AccountID}_{request.Platform}";
+                string query = $"SELECT password FROM [{tableName}] WHERE PlatformID = @Id";
+
+                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                {
+                    await connection.OpenAsync();
+                    using var command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@Id", request.Id);
+
+                    var encryptedPassword = await command.ExecuteScalarAsync() as string;
+                    if (encryptedPassword == null) return NotFound("Account row not found.");
+
+                    string decryptedPassword = _encryptionService.Decrypt(encryptedPassword, vaultKey);
+                    return Ok(new { Password = decryptedPassword });
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error decrypting password");
+                return StatusCode(500, new { Message = "Decryption failed. Please check your vault password." });
+            }
         }
+
     }
 
-    public class AccountModel
+    public class AccountListRequest
     {
-        [Required]
-        [StringLength(50)]
         public string Platform { get; set; } = string.Empty;
-        
-        [Required]
-        [StringLength(50)]
+        public string VaultPassword { get; set; } = string.Empty;
+    }
+
+    public class AddAccountRequest
+    {
+        public string Platform { get; set; } = string.Empty;
+        public string VaultPassword { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
-        
-        [Required]
-        [StringLength(255)]
         public string Password { get; set; } = string.Empty;
-        
-        public string Description { get; set; } = string.Empty;
-        
-        public DateTime? CreatedAt { get; set; }
+        public string? Description { get; set; }
+    }
+
+    public class EditAccountRequest : AddAccountRequest
+    {
+        public long Id { get; set; }
+    }
+
+    public class DeleteAccountRequest
+    {
+        public string Platform { get; set; } = string.Empty;
+        public long Id { get; set; }
+    }
+
+    public class DecryptPasswordRequest
+    {
+        public string Platform { get; set; } = string.Empty;
+        public long Id { get; set; }
+        public string VaultPassword { get; set; } = string.Empty;
+    }
+
+    public class AccountResponseModel
+    {
+        public long Id { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public string? TimeZoneId { get; set; } // Added
     }
 }
- 

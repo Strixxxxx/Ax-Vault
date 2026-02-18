@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+using System.Security.Cryptography;
 using Backend.Data;
-using Backend.Models;
 using Backend.Models.RouteGuard;
 using Backend.Services;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 
 namespace Backend.Controllers.RouteGuard
 {
@@ -17,130 +19,101 @@ namespace Backend.Controllers.RouteGuard
         private readonly ILogger<RouteGuardController> _logger;
         private readonly EncryptionService _encryptionService;
 
-        public RouteGuardController(
-            ApplicationDbContext context, 
-            ILogger<RouteGuardController> logger, 
-            EncryptionService encryptionService)
+        public RouteGuardController(ApplicationDbContext context, ILogger<RouteGuardController> logger, EncryptionService encryptionService)
         {
             _context = context;
             _logger = logger;
             _encryptionService = encryptionService;
         }
 
+
         [HttpPost("validate")]
         [Authorize]
-        public async Task<IActionResult> ValidateAccess([FromBody] RouteGuardRequest request)
+        public async Task<IActionResult> Validate([FromBody] RouteGuardRequest request)
         {
+            var logPath = Path.Combine(Directory.GetCurrentDirectory(), "debug_logs.txt");
             try
             {
-                _logger.LogInformation("=== ROUTE GUARD VALIDATION REQUEST RECEIVED ===");
-                _logger.LogInformation($"Request - TargetModule: {request.TargetModule}, UniqueKey Length: {request.UniqueKey?.Length ?? 0}");
-                
-                if (string.IsNullOrEmpty(request.UniqueKey))
+                // Robust username extraction
+                var usernameClaim = User.Identity?.Name;
+                if (string.IsNullOrEmpty(usernameClaim))
                 {
-                    _logger.LogWarning("Request is missing the unique key.");
-                    return BadRequest(new RouteGuardResponse { IsAuthorized = false, Message = "Unique key is required." });
+                    usernameClaim = User.Claims.FirstOrDefault(c => c.Type == "sub" || c.Type == JwtRegisteredClaimNames.Sub || c.Type == ClaimTypes.NameIdentifier)?.Value;
+                }
+                if (string.IsNullOrEmpty(usernameClaim))
+                {
+                     usernameClaim = User.Claims.FirstOrDefault(c => c.Type == "unique_name" || c.Type == JwtRegisteredClaimNames.UniqueName || c.Type == ClaimTypes.Name)?.Value;
                 }
 
-                // Get username from the JWT token's subject claim - Robust Lookup
-                var username = User.Identity?.Name;
-                
-                if (string.IsNullOrEmpty(username)) 
+                if (string.IsNullOrEmpty(usernameClaim))
                 {
-                    // Fallback: Check for other common claim types if Identity.Name is null
-                    username = User.Claims.FirstOrDefault(c => c.Type == "sub")?.Value 
-                              ?? User.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value
-                              ?? User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                              ?? User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Name)?.Value;
-                }
-                
-                _logger.LogInformation($"JWT Token username claim: {username}");
-                
-                if (string.IsNullOrEmpty(username))
-                {
-                    _logger.LogWarning("Username claim not found in token");
-                    _logger.LogWarning("--- AVAILABLE CLAIMS ---");
+                    _logger.LogWarning("RouteGuardController: No identity claim found in token.");
+                    _logger.LogWarning("RouteGuardController: Listing all available claims for debugging:");
                     foreach (var claim in User.Claims)
                     {
-                        _logger.LogWarning($"Type: {claim.Type}, Value: {claim.Value}");
+                        _logger.LogWarning("RouteGuardController: Claim: Type={Type}, Value={Value}", claim.Type, claim.Value);
                     }
-                    _logger.LogWarning("------------------------");
-                    return Unauthorized(new { Message = "Username claim not found in token." });
+                }
+                
+                // Fallback to explicitly passed identifier if claim is missing
+                var identifier = usernameClaim ?? request.UserIdentifier;
+
+                var logMsg = $"[{DateTime.UtcNow}] Validate: {identifier ?? "UNKNOWN"}, Claim: {usernameClaim ?? "NULL"}, BodyID: {request.UserIdentifier ?? "NULL"}\n";
+                await System.IO.File.AppendAllTextAsync(logPath, logMsg);
+                Console.WriteLine(logMsg);
+
+                if (string.IsNullOrEmpty(identifier)) 
+                {
+                    await System.IO.File.AppendAllTextAsync(logPath, "[RouteGuard] REJECTED: No identifier found.\n");
+                    return Unauthorized(new { Message = "User identity not found." });
                 }
 
-                _logger.LogInformation($"Route guard validation request for user: {username}, module: {request.TargetModule}");
+                var fixedSalt = PasswordHasher.GetDeterministicSalt();
+                var inputHash = PasswordHasher.HashDeterministic(identifier.ToLowerInvariant(), fixedSalt);
 
-                // Generate the deterministic hash for the username
-                var usernameHash = EncryptionService.GenerateDeterministicHash(username.ToLowerInvariant());
-                _logger.LogInformation($"Generated username hash for lookup: {usernameHash.Substring(0, 10)}...");
-
-                // Find the user by their hashed username
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == usernameHash);
+                // Fix: Check both UsernameHashed and EmailHashed
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
 
                 if (user == null)
                 {
-                    _logger.LogWarning($"User from token not found in database: {username}");
-                    return Unauthorized(new RouteGuardResponse
-                    {
-                        IsAuthorized = false,
-                        Message = "User not found"
-                    });
+                    await System.IO.File.AppendAllTextAsync(logPath, $"[RouteGuard] REJECTED: User '{identifier}' not found in DB.\n");
+                    return Unauthorized(new { Message = "User not found in database." });
                 }
-                
-                // Decrypt username for logging now that we have the correct user object
-                var decryptedUsername = _encryptionService.Decrypt(user.Username);
-                _logger.LogInformation($"User found in database: {decryptedUsername}");
-                
-                // Log the stored unique key from the database for debugging
-                _logger.LogInformation($"Stored Unique Key from DB (first 15 chars): {user.UniqueKey.Substring(0, Math.Min(15, user.UniqueKey.Length))}...");
 
-                // Log hashed key format for debugging (safely)
-                var keyParts = user.UniqueKey.Split('.');
-                if (keyParts.Length == 3)
+                if (string.IsNullOrEmpty(request.VaultPassword))
                 {
-                    _logger.LogInformation($"DB Key Iterations: {keyParts[0]}");
-                    _logger.LogInformation($"DB Key Salt (Base64): {keyParts[1]}");
-                    _logger.LogInformation($"DB Key Hash (Base64): {keyParts[2]}");
+                    _logger.LogWarning("RouteGuard: Vault Password is missing in request");
+                    return BadRequest(new { Message = "Vault Password is required" });
                 }
-                else
+
+                Console.WriteLine($"[RouteGuard] Attempting verification for user '{usernameClaim}'");
+                Console.WriteLine($"[RouteGuard] DB RandomVerifier (First 10): {user.RandomVerifier.Substring(0, Math.Min(10, user.RandomVerifier.Length))}...");
+
+                // --- Verification Logic (Argon2id + Decryption) ---
+                // 1. Derive Key from Vault Password
+                Console.WriteLine("[RouteGuard] Deriving key from vault password...");
+                byte[] vaultKeyBytes = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, fixedSalt);
+                
+                try
                 {
-                    _logger.LogError($"Invalid stored key format for user {decryptedUsername}. Expected 3 parts, found {keyParts.Length}. Stored key starts with: {user.UniqueKey.Substring(0, Math.Min(15, user.UniqueKey.Length))}");
-                    return StatusCode(500, new RouteGuardResponse { IsAuthorized = false, Message = "Server configuration error: Invalid key format." });
+                    // 2. Attempt Decrypt RandomVerifier
+                    string decrypted = _encryptionService.Decrypt(user.RandomVerifier, vaultKeyBytes);
+                    
+                    // Success!
+                    await System.IO.File.AppendAllTextAsync(logPath, $"[RouteGuard] SUCCESS: Access granted to {identifier}\n");
+                    return Ok(new { IsAuthorized = true, Message = "Access granted" });
                 }
-                
-                // Validate the unique key
-                _logger.LogInformation("--- HASH VERIFICATION ---");
-                _logger.LogInformation($"Calling PasswordHasher.VerifyPassword with StoredHash='{user.UniqueKey}' and ProvidedKey='{request.UniqueKey}'");
-                bool isValid = PasswordHasher.VerifyPassword(user.UniqueKey, request.UniqueKey);
-                _logger.LogInformation($"=== KEY VALIDATION RESULT: {isValid} ===");
-                
-                if (!isValid)
+                catch (CryptographicException)
                 {
-                    return Unauthorized(new RouteGuardResponse
-                    {
-                        IsAuthorized = false,
-                        Message = "Invalid unique key"
-                    });
+                    await System.IO.File.AppendAllTextAsync(logPath, $"[RouteGuard] REJECTED: Decryption failed for {identifier}\n");
+                    return Ok(new { IsAuthorized = false, Message = "Invalid vault password" }); 
                 }
-                
-                _logger.LogInformation($"Route guard validation successful for user: {decryptedUsername}, module: {request.TargetModule}");
-                
-                // If we reach here, the user is authorized to access the module
-                return Ok(new RouteGuardResponse
-                {
-                    IsAuthorized = true,
-                    Message = $"Access granted to {request.TargetModule}"
-                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during route guard validation");
-                return StatusCode(500, new RouteGuardResponse
-                {
-                    IsAuthorized = false,
-                    Message = "An error occurred during validation"
-                });
+                _logger.LogError(ex, "Error validating route access");
+                return StatusCode(500, new { Message = "An error occurred during validation" });
             }
         }
     }
-} 
+}

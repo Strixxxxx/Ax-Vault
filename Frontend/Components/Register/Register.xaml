@@ -17,10 +17,11 @@
                    Margin="0,0,0,15"/>
             
             <!-- Step indicators -->
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
                 <BoxView Grid.Column="0" HeightRequest="4" BackgroundColor="#00e5ff" VerticalOptions="Center" x:Name="StepIndicator1" />
                 <BoxView Grid.Column="1" HeightRequest="4" BackgroundColor="#333333" VerticalOptions="Center" x:Name="StepIndicator2" />
                 <BoxView Grid.Column="2" HeightRequest="4" BackgroundColor="#333333" VerticalOptions="Center" x:Name="StepIndicator3" />
+                <BoxView Grid.Column="3" HeightRequest="4" BackgroundColor="#333333" VerticalOptions="Center" x:Name="StepIndicator4" />
             </Grid>
         </VerticalStackLayout>
         

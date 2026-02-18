@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:Frontend.Models"
              xmlns:local="clr-namespace:Frontend.Components.Dashboard"
-             x:Class="Frontend.Components.Dashboard.DashboardView">
+             x:Class="Frontend.Components.Dashboard.DashboardView"
+             x:DataType="local:DashboardView">
 
     <ScrollView>
         <VerticalStackLayout Padding="20">
@@ -23,11 +25,20 @@
                            PlaceholderColor="Gray" 
                            TextColor="White"
                            BackgroundColor="Transparent"
-                           Grid.Column="0"/>
-                    <Button Text="🔍" 
-                            Grid.Column="1" 
-                            BackgroundColor="Transparent" 
-                            TextColor="#00e5ff"/>
+                           Grid.Column="0"
+                           TextChanged="OnSearchEntryTextChanged"/>
+                    <ImageButton Grid.Column="1" 
+                                 BackgroundColor="Transparent"
+                                 VerticalOptions="Center"
+                                 WidthRequest="30"
+                                 HeightRequest="30">
+                        <ImageButton.Source>
+                            <FontImageSource FontFamily="MaterialIcons" 
+                                             Glyph="&#xe8b6;"
+                                             Color="#00e5ff"
+                                             Size="30"/>
+                        </ImageButton.Source>
+                    </ImageButton>
                 </Grid>
             </Frame>
             
@@ -56,49 +67,56 @@
             
             <!-- Dynamic Platform Cards -->
             <CollectionView ItemsSource="{Binding PlatformItems}"
-                          EmptyView="No platforms available">
+                          EmptyView="No platforms available"
+                          SelectionMode="None">
                 <CollectionView.ItemsLayout>
-                    <GridItemsLayout Orientation="Vertical"
-                                   Span="2"
-                                   HorizontalItemSpacing="15"
-                                   VerticalItemSpacing="15" />
+                    <LinearItemsLayout Orientation="Vertical" />
                 </CollectionView.ItemsLayout>
                 <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="local:PlatformItem">
+                    <DataTemplate x:DataType="models:PlatformItem">
                         <Frame BackgroundColor="#333333" 
                                CornerRadius="10" 
                                Padding="15" 
-                               Margin="0,0,15,15"
-                               WidthRequest="300"
-                               HeightRequest="100">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <!-- Platform Icon (Folder) -->
-                                <Label Grid.Column="0" 
-                                       Text="{Binding Icon}" 
-                                       FontSize="32" 
-                                       VerticalOptions="Center"
-                                       Margin="0,0,15,0"/>
-                                
-                                <!-- Platform Name -->
-                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
-                                    <Label Text="{Binding Name}" 
-                                           TextColor="White" 
-                                           FontSize="18" 
-                                           FontAttributes="Bold"/>
-                                    <Label Text="{Binding AccountCount, StringFormat='{0} accounts'}" 
-                                           TextColor="LightGray" 
-                                           FontSize="14"/>
-                                </VerticalStackLayout>
-                                
-                                <!-- View Button -->
-                                <Button Grid.Column="2" 
-                                        Text="View Accounts" 
-                                        BackgroundColor="#00e5ff" 
-                                        TextColor="Black"
-                                        CornerRadius="5"
-                                        VerticalOptions="Center"
-                                        Command="{Binding ViewCommand}"/>
-                            </Grid>
+                               Margin="0,0,0,15"
+                               HasShadow="False">
+                            <VerticalStackLayout>
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Platform Icon -->
+                                    <Label Grid.Column="0" 
+                                           Text="{Binding Icon}" 
+                                           FontSize="32" 
+                                           VerticalOptions="Center"
+                                           Margin="0,0,15,0"/>
+                                    
+                                    <!-- Platform Name and Account Count -->
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                        <Label Text="{Binding Name}" 
+                                               TextColor="White" 
+                                               FontSize="18" 
+                                               FontAttributes="Bold"/>
+                                        <Label Text="{Binding AccountCountDisplay}" 
+                                               TextColor="LightGray" 
+                                               FontSize="14"/>
+                                    </VerticalStackLayout>
+                                    
+                                    <!-- View Accounts Button/Icon -->
+                                    <ImageButton Grid.Column="2" 
+                                                 BackgroundColor="Transparent"
+                                                 Command="{Binding ViewAccountsCommand}"
+                                                 CommandParameter="{Binding .}"
+                                                 VerticalOptions="Center"
+                                                 WidthRequest="30"
+                                                 HeightRequest="30"
+                                                 Aspect="AspectFit">
+                                        <ImageButton.Source>
+                                            <FontImageSource FontFamily="MaterialIcons" 
+                                                             Glyph="&#xe873;"
+                                                             Color="#00e5ff"
+                                                             Size="30"/>
+                                        </ImageButton.Source>
+                                    </ImageButton>
+                                </Grid>
+                            </VerticalStackLayout>
                         </Frame>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

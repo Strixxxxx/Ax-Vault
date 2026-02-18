@@ -12,7 +12,8 @@
               Grid.Column="0" 
               WidthRequest="250" 
               BackgroundColor="#222222"
-              RowDefinitions="Auto,*,Auto">
+              RowDefinitions="Auto,*,Auto"
+              ZIndex="200">
 
             <!-- Top section with toggle button, logo and title combined -->
             <Grid Grid.Row="0" Padding="10,15">
@@ -48,7 +49,7 @@
                 </Grid>
                 
                 <!-- Collapsed View - only toggle button visible -->
-                <Grid x:Name="CollapsedTopSection" IsVisible="false" HorizontalOptions="Center">
+                <Grid x:Name="CollapsedTopSection" IsVisible="false">
                     <!-- Toggle Button -->
                     <Button x:Name="CollapsedToggleButton"
                             Text="≡"
@@ -58,18 +59,20 @@
                             Padding="0"
                             BackgroundColor="Transparent"
                             TextColor="#00e5ff"
-                            Clicked="OnToggleSidebarClicked"/>
+                            Clicked="OnToggleSidebarClicked"
+                            HorizontalOptions="Center"/>
                 </Grid>
             </Grid>
 
             <!-- Collapsed Logo and Vertical Text - only visible when collapsed -->
             <VerticalStackLayout Grid.Row="1"
-                                x:Name="CollapsedLogoView" 
-                                IsVisible="false" 
-                                HorizontalOptions="Center" 
+                                x:Name="CollapsedLogoView"
+                                IsVisible="false"
                                 Spacing="5"
                                 VerticalOptions="Start"
-                                Margin="0,15,0,0">
+                                HorizontalOptions="Center"
+                                Margin="0,15,0,0"
+                                Padding="10,0">
                 <!-- App Logo/Icon -->
                 <Image Source="silverwolf.png" 
                        HeightRequest="40" 
@@ -149,10 +152,50 @@
                    TextColor="White"
                    Margin="15,0,15,20"
                    Clicked="OnLogoutClicked"/>
+            
+            <!-- Neon Blue Light Divider for Mobile (visible only on phone idiom) -->
+            <Grid Grid.RowSpan="3" WidthRequest="3" ZIndex="150" HorizontalOptions="End" x:Name="MobileNeonDivider">
+                <Grid.IsVisible>
+                    <OnIdiom x:TypeArguments="x:Boolean">
+                        <OnIdiom.Phone>True</OnIdiom.Phone>
+                        <OnIdiom.Desktop>False</OnIdiom.Desktop>
+                        <OnIdiom.Tablet>False</OnIdiom.Tablet>
+                    </OnIdiom>
+                </Grid.IsVisible>
+                
+                <!-- Glowing Border Effect -->
+                <BoxView Color="#00e5ff" 
+                         HorizontalOptions="Center" 
+                         VerticalOptions="Fill" 
+                         WidthRequest="3"/>
+                
+                <!-- Glow Effect (Inner) -->
+                <BoxView Color="#00e5ff" 
+                         Opacity="0.5"
+                         HorizontalOptions="Center" 
+                         VerticalOptions="Fill" 
+                         WidthRequest="6" 
+                         Margin="0,-1,0,-1"/>
+                         
+                <!-- Glow Effect (Outer) -->
+                <BoxView Color="#00e5ff" 
+                         Opacity="0.3"
+                         HorizontalOptions="Center" 
+                         VerticalOptions="Fill" 
+                         WidthRequest="9" 
+                         Margin="0,-2,0,-2"/>
+            </Grid>
         </Grid>
 
-        <!-- Neon Blue Light Divider -->
-        <Grid Grid.Column="1" WidthRequest="2" x:Name="NeonDivider">
+        <!-- Neon Blue Light Divider (Desktop/Tablet only) -->
+        <Grid Grid.Column="1" WidthRequest="2" x:Name="NeonDivider" ZIndex="150"> <!-- Added ZIndex -->
+            <Grid.IsVisible>
+                <OnIdiom x:TypeArguments="x:Boolean">
+                    <OnIdiom.Phone>False</OnIdiom.Phone>
+                    <OnIdiom.Desktop>True</OnIdiom.Desktop>
+                    <OnIdiom.Tablet>True</OnIdiom.Tablet>
+                </OnIdiom>
+            </Grid.IsVisible>
             <!-- Glowing Border Effect -->
             <BoxView Color="#00e5ff" 
                      HorizontalOptions="Center" 
@@ -178,6 +221,13 @@
 
         <!-- Content Area -->
         <Grid x:Name="ContentArea" Grid.Column="2" BackgroundColor="#1a1a1a">
+            <Grid.Padding>
+                <OnIdiom x:TypeArguments="Thickness">
+                    <OnIdiom.Phone>60,0,0,0</OnIdiom.Phone>
+                    <OnIdiom.Desktop>0</OnIdiom.Desktop>
+                    <OnIdiom.Tablet>0</OnIdiom.Tablet>
+                </OnIdiom>
+            </Grid.Padding>
             <!-- Dashboard Component -->
             <dashboard:DashboardView x:Name="DashboardComponent" IsVisible="true" />
             
@@ -187,5 +237,38 @@
             <!-- Backup Component -->
             <backups:BackupsView x:Name="BackupsComponent" IsVisible="false" />
         </Grid>
+        <!-- Toast Notification Container -->
+        <Grid x:Name="ToastContainer" 
+              Grid.ColumnSpan="3" 
+              HorizontalOptions="End" 
+              VerticalOptions="Start" 
+              Padding="20" 
+              RowSpacing="10"
+              ZIndex="2000"
+              InputTransparent="True"> <!-- Allow clicks to pass through if no toast is visible -->
+            <!-- Toasts will be dynamically added here -->
+        </Grid>
+        <!-- Modal Overlay Container -->
+        <Grid x:Name="ModalContainer" 
+              Grid.ColumnSpan="3" 
+              IsVisible="False" 
+              BackgroundColor="#CC000000"
+              InputTransparent="False"
+              ZIndex="1000"> <!-- Ensure it's on top -->
+
+            <!-- Modal Content will be loaded here dynamically -->
+            <ContentView x:Name="ModalPlaceholder"
+                         HorizontalOptions="Center"
+                         VerticalOptions="Center"
+                         MaximumHeightRequest="850">
+                <ContentView.WidthRequest>
+                    <OnIdiom x:TypeArguments="x:Double">
+                        <OnIdiom.Phone>360</OnIdiom.Phone>
+                        <OnIdiom.Desktop>700</OnIdiom.Desktop>
+                    </OnIdiom>
+                </ContentView.WidthRequest>
+            </ContentView>
+        </Grid>
+        
     </Grid>
-</ContentView> 
+</ContentView>

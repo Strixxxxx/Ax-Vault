@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.Accounts.Modals.PlatformModal">
+    
+    <Frame BackgroundColor="#121212" 
+           BorderColor="#333333" 
+           CornerRadius="10" 
+           Padding="0" 
+           HasShadow="True">
+        <VerticalStackLayout Padding="25" Spacing="20">
+            
+            <Label x:Name="TitleLabel" 
+                   Text="Add Platform" 
+                   FontSize="22" 
+                   FontAttributes="Bold" 
+                   TextColor="#00e5ff" 
+                   HorizontalOptions="Start"/>
+
+            <Border BackgroundColor="#1a1a1a" Padding="15" Stroke="#333333" StrokeThickness="1">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Platform Name" TextColor="Gray" FontSize="12"/>
+                    <Entry x:Name="NameEntry" 
+                           Placeholder="e.g. Google, Microsoft 365" 
+                           PlaceholderColor="#555555"
+                           TextColor="White"
+                           BackgroundColor="#262626"
+                           HeightRequest="40"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label x:Name="ErrorLabel" 
+                   TextColor="#ff073a" 
+                   FontSize="12" 
+                   HorizontalOptions="Center" 
+                   IsVisible="False"/>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="15">
+                <Button Grid.Column="0" 
+                        Text="Cancel" 
+                        BackgroundColor="Transparent" 
+                        TextColor="White" 
+                        BorderColor="#555555" 
+                        BorderWidth="1" 
+                        HeightRequest="40"
+                        Clicked="OnCancelClicked"/>
+                
+                <Button Grid.Column="1" 
+                        x:Name="ConfirmButton"
+                        Text="Confirm" 
+                        BackgroundColor="#00e5ff" 
+                        TextColor="Black" 
+                        CornerRadius="5"
+                        HeightRequest="40"
+                        Clicked="OnConfirmClicked"/>
+            </Grid>
+
+        </VerticalStackLayout>
+    </Frame>
+</ContentView>

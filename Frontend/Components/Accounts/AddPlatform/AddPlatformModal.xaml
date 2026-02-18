@@ -16,7 +16,6 @@
                BorderColor="#333333"
                VerticalOptions="Center"
                HorizontalOptions="Center"
-               WidthRequest="400"
                CornerRadius="10"
                Padding="20"
                HasShadow="True">

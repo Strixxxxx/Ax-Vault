@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:Frontend.Models"
+             xmlns:local="clr-namespace:Frontend.Components.Modals"
+             x:Class="Frontend.Components.Modals.DashboardAccountDetailModal"
+             x:DataType="local:DashboardAccountDetailModal"
+             BackgroundColor="#1a1a1a"> <!-- Dark background for modal -->
+    <VerticalStackLayout Padding="30" Spacing="20">
+        <!-- Close Button -->
+        <Button Text="✕" 
+                Clicked="OnCloseClicked" 
+                HorizontalOptions="End"
+                BackgroundColor="Transparent"
+                TextColor="Gray"
+                FontSize="16"
+                WidthRequest="40"
+                HeightRequest="40"/>
+
+        <Label Text="{Binding PlatformName}"
+               TextColor="#00e5ff"
+               FontSize="24"
+               FontAttributes="Bold"
+               HorizontalOptions="Center" />
+
+        <Frame BackgroundColor="#333333" CornerRadius="10" Padding="15" HasShadow="False">
+            <VerticalStackLayout Spacing="10">
+                <Label Text="Username:" TextColor="LightGray" FontSize="14"/>
+                <Label Text="{Binding Account.Username}" TextColor="White" FontSize="18" FontAttributes="Bold"/>
+
+                <Label Text="Description:" TextColor="LightGray" FontSize="14"/>
+                <Label Text="{Binding Account.Description}" TextColor="White" FontSize="16"/>
+                
+                <Label Text="Created At:" TextColor="LightGray" FontSize="14"/>
+                <Label Text="{Binding Account.CreatedAt, StringFormat='{0:MM/dd/yyyy}'}" TextColor="White" FontSize="16"/>
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                    <VerticalStackLayout Grid.Column="0">
+                        <Label Text="Password:" TextColor="LightGray" FontSize="14"/>
+                        <Label Text="{Binding DisplayedPassword}" 
+                               TextColor="LightGreen" 
+                               FontSize="18" 
+                               FontAttributes="Bold" />
+                    </VerticalStackLayout>
+                    
+                    <ImageButton Grid.Column="1"
+                                 BackgroundColor="Transparent"
+                                 Command="{Binding ShowPasswordCommand}"
+                                 VerticalOptions="Center"
+                                 WidthRequest="30"
+                                 HeightRequest="30">
+                        <ImageButton.Source>
+                            <FontImageSource FontFamily="MaterialIcons" 
+                                             Glyph="{Binding ShowPasswordIcon}" 
+                                             Color="#00e5ff"
+                                             Size="30"/>
+                        </ImageButton.Source>
+                    </ImageButton>
+                </Grid>
+            </VerticalStackLayout>
+        </Frame>
+    </VerticalStackLayout>
+</ContentView>

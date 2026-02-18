@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.Accounts.Pages.MobileEditPlatformPage"
+             Title="Edit Platform"
+             BackgroundColor="#1a1a1a">
+    <ContentPage.Content>
+        <ScrollView>
+            <VerticalStackLayout Padding="25" Spacing="20" VerticalOptions="CenterAndExpand" HorizontalOptions="CenterAndExpand">
+                
+                <Label x:Name="TitleLabel" 
+                       Text="Rename Platform" 
+                       FontSize="22" 
+                       FontAttributes="Bold" 
+                       TextColor="#00e5ff" />
+
+                <Border BackgroundColor="#1a1a1a" Padding="15" Stroke="#333333" StrokeThickness="1">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Platform Name" TextColor="Gray" FontSize="12"/>
+                        <Entry x:Name="NameEntry" 
+                               Placeholder="e.g. Google, Microsoft 365" 
+                               PlaceholderColor="#555555"
+                               TextColor="White"
+                               BackgroundColor="#262626"
+                               HeightRequest="40"/>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label x:Name="ErrorLabel" 
+                       TextColor="#ff073a" 
+                       FontSize="12" 
+                       HorizontalOptions="Center" 
+                       IsVisible="False"/>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="15">
+                    <Button Grid.Column="0" 
+                            Text="Cancel" 
+                            BackgroundColor="Transparent" 
+                            TextColor="White" 
+                            BorderColor="#555555" 
+                            BorderWidth="1" 
+                            HeightRequest="40"
+                            Clicked="OnCancelClicked"/>
+                    
+                    <Button Grid.Column="1" 
+                            x:Name="ConfirmButton"
+                            Text="Update" 
+                            BackgroundColor="#00e5ff" 
+                            TextColor="Black" 
+                            CornerRadius="5"
+                            HeightRequest="40"
+                            Clicked="OnConfirmClicked"/>
+                </Grid>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </ContentPage.Content>
+</ContentPage>

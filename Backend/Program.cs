@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 
 // Load .env file at the very beginning
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 try
 {
     var currentDirectory = Directory.GetCurrentDirectory();
@@ -143,6 +144,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.MapInboundClaims = false; // Prevent mapping of standard JWT claims to SOAP-style claims
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,

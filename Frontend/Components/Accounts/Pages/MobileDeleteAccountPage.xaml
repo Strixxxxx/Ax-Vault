@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.Accounts.Pages.MobileDeleteAccountPage"
+             Title="Delete Account"
+             BackgroundColor="#1a1a1a">
+        <VerticalStackLayout Padding="25" Spacing="20" VerticalOptions="CenterAndExpand" HorizontalOptions="CenterAndExpand">
+            <Label Text="Delete Account" 
+                   FontSize="24" 
+                   FontAttributes="Bold" 
+                   TextColor="#00e5ff" 
+                   HorizontalOptions="Center"/>
+
+            <Label x:Name="ConfirmationLabel"
+                   Text="Are you sure you want to delete this account?" 
+                   FontSize="16" 
+                   TextColor="White" 
+                   HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center"/>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="15" Margin="0,20,0,0">
+                <Button Grid.Column="0" 
+                        Text="Cancel" 
+                        BackgroundColor="Transparent" 
+                        TextColor="White" 
+                        BorderColor="#555555" 
+                        BorderWidth="1" 
+                        HeightRequest="40"
+                        Clicked="OnCancelClicked"/>
+                
+                <Button Grid.Column="1" 
+                        Text="Delete" 
+                        BackgroundColor="#ff073a" 
+                        TextColor="White" 
+                        CornerRadius="5"
+                        HeightRequest="40"
+                        Clicked="OnDeleteClicked"/>
+            </Grid>
+        </VerticalStackLayout>
+</ContentPage>

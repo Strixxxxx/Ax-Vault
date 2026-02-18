@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.Accounts.Modals.DeletePlatformModal">
+    
+    <Frame BackgroundColor="#121212" 
+           BorderColor="#ff073a" 
+           CornerRadius="10" 
+           Padding="0" 
+           HasShadow="True">
+        <VerticalStackLayout Padding="25" Spacing="20">
+            
+            <Label Text="Delete Platform" 
+                   FontSize="22" 
+                   FontAttributes="Bold" 
+                   TextColor="#ff073a" 
+                   HorizontalOptions="Start"/>
+
+            <Border BackgroundColor="#1a1a1a" Padding="15" Stroke="#333333" StrokeThickness="1">
+                <VerticalStackLayout Spacing="15">
+                    <Label TextColor="White" FontSize="14" HorizontalOptions="Center" HorizontalTextAlignment="Center">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="Are you sure you want to delete "/>
+                                <Span x:Name="PlatformSpan" FontAttributes="Bold" TextColor="#ff073a"/>
+                                <Span Text="? This will also delete all accounts within it."/>
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                    
+                    <BoxView HeightRequest="1" Color="#333333" Margin="0,5"/>
+
+                    <Label Text="Please type the platform name to confirm:" 
+                           TextColor="Gray" 
+                           FontSize="12" 
+                           HorizontalOptions="Center"/>
+                           
+                    <Entry x:Name="ConfirmEntry" 
+                           Placeholder="Type platform name..." 
+                           PlaceholderColor="#555555"
+                           TextColor="White"
+                           BackgroundColor="#262626"
+                           HeightRequest="40"
+                           HorizontalTextAlignment="Center"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <Label x:Name="ErrorLabel" 
+                   TextColor="#ff073a" 
+                   FontSize="12" 
+                   HorizontalOptions="Center" 
+                   IsVisible="False"/>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="15">
+                <Button Grid.Column="0" 
+                        Text="Cancel" 
+                        BackgroundColor="Transparent" 
+                        TextColor="White" 
+                        BorderColor="#555555" 
+                        BorderWidth="1" 
+                        HeightRequest="40"
+                        Clicked="OnCancelClicked"/>
+                
+                <Button Grid.Column="1" 
+                        x:Name="DeleteButton"
+                        Text="Delete" 
+                        BackgroundColor="#ff073a" 
+                        TextColor="Black" 
+                        CornerRadius="5"
+                        HeightRequest="40"
+                        Clicked="OnDeleteClicked"/>
+            </Grid>
+
+        </VerticalStackLayout>
+    </Frame>
+</ContentView>

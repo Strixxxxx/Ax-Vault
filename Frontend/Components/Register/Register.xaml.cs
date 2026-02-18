@@ -13,12 +13,13 @@ public partial class Register : ContentView
     private string? _username;
     private string? _email;
     private string? _password;
-    private string? _uniqueKey;
+    private string? _vaultPassword;
     
     // Step components
     private readonly UsernameStep _usernameStep;
     private readonly EmailStep _emailStep;
     private readonly PasswordStep _passwordStep;
+    private readonly VaultPasswordStep _vaultPasswordStep;
     
     // Current step tracker
     private int _currentStep = 1;
@@ -31,11 +32,13 @@ public partial class Register : ContentView
         _usernameStep = new UsernameStep();
         _emailStep = new EmailStep();
         _passwordStep = new PasswordStep();
+        _vaultPasswordStep = new VaultPasswordStep();
         
         // Subscribe to validation events
         _usernameStep.ValidationChanged += OnStepValidationChanged;
         _emailStep.ValidationChanged += OnStepValidationChanged;
         _passwordStep.ValidationChanged += OnStepValidationChanged;
+        _vaultPasswordStep.ValidationChanged += OnStepValidationChanged;
         
         // Start with the first step
         ShowStep(1);
@@ -47,9 +50,10 @@ public partial class Register : ContentView
         _currentStep = step;
         
         // Update step indicators
-        StepIndicator1.BackgroundColor = step >= 1 ? Color.FromArgb("#00e5ff") : Color.FromArgb("#333333");
-        StepIndicator2.BackgroundColor = step >= 2 ? Color.FromArgb("#00e5ff") : Color.FromArgb("#333333");
-        StepIndicator3.BackgroundColor = step >= 3 ? Color.FromArgb("#00e5ff") : Color.FromArgb("#333333");
+        StepIndicator1.BackgroundColor = step >= 1 ? Color.FromRgba("#00e5ff") : Color.FromRgba("#333333");
+        StepIndicator2.BackgroundColor = step >= 2 ? Color.FromRgba("#00e5ff") : Color.FromRgba("#333333");
+        StepIndicator3.BackgroundColor = step >= 3 ? Color.FromRgba("#00e5ff") : Color.FromRgba("#333333");
+        StepIndicator4.BackgroundColor = step >= 4 ? Color.FromRgba("#00e5ff") : Color.FromRgba("#333333");
         
         // Clear content area
         ContentArea.Children.Clear();
@@ -71,6 +75,12 @@ public partial class Register : ContentView
                 
             case 3:
                 ContentArea.Children.Add(_passwordStep);
+                NextButton.Text = "Next";
+                BackButton.IsEnabled = true;
+                break;
+
+            case 4:
+                ContentArea.Children.Add(_vaultPasswordStep);
                 NextButton.Text = "Register";
                 BackButton.IsEnabled = true;
                 break;
@@ -100,6 +110,10 @@ public partial class Register : ContentView
             case 3:
                 NextButton.IsEnabled = _passwordStep.IsValid;
                 break;
+
+            case 4:
+                NextButton.IsEnabled = _vaultPasswordStep.IsValid;
+                break;
         }
     }
     
@@ -120,7 +134,11 @@ public partial class Register : ContentView
                 
             case 3:
                 _password = _passwordStep.Password;
-                _uniqueKey = _passwordStep.UniqueKey;
+                ShowStep(4);
+                break;
+
+            case 4:
+                _vaultPassword = _vaultPasswordStep.VaultPassword;
                 CompleteRegistration();
                 break;
         }
@@ -151,27 +169,24 @@ public partial class Register : ContentView
             // Get the local timezone ID
             var timezone = TimeZoneInfo.Local.Id;
 
-            // Prepare registration data for API call
+            // Prepare registration data for API call (Zero-Knowledge v2)
             var registrationData = new
             {
                 Username = _username,
                 Email = _email,
                 Password = _password,
-                UniqueKey = _uniqueKey,
+                VaultPassword = _vaultPassword,
                 Timezone = timezone
             };
             
-            // Use the shared ApiClient instance to ensure the secret header is included
+            // Use the shared ApiClient instance
             var response = await Services.ApiClient.Instance.PostAsJsonAsync("api/auth/register", registrationData);
             
             if (response.IsSuccessStatusCode)
             {
-                // Registration successful
-                var result = await response.Content.ReadFromJsonAsync<RegistrationResponse>();
-                
                 // Show success message
-                if (this.Window?.Page != null)
-                    await this.Window.Page.DisplayAlert("Registration Successful", 
+                if (App.Current?.Windows[0].Page != null) // Changed
+                    await App.Current!.Windows[0].Page!.DisplayAlertAsync("Registration Successful", // Changed
                         "Your account has been created. Please log in with your credentials.", "OK");
                 
                 // Signal successful registration
@@ -182,12 +197,10 @@ public partial class Register : ContentView
             }
             else
             {
-                // Registration failed: read the raw error content from the backend.
                 var errorDetails = await response.Content.ReadAsStringAsync();
                 
-                // Display the detailed error message from the backend.
-                if (this.Window?.Page != null)
-                    await this.Window.Page.DisplayAlert("Registration Error", 
+                if (App.Current?.Windows[0].Page != null) // Changed
+                    await App.Current!.Windows[0].Page!.DisplayAlertAsync("Registration Error", // Changed
                         string.IsNullOrWhiteSpace(errorDetails) ? "An unknown error occurred." : errorDetails,
                         "OK");
 
@@ -196,14 +209,12 @@ public partial class Register : ContentView
         }
         catch (Exception ex)
         {
-            // Show detailed exception message
-            if (this.Window?.Page != null)
-                await this.Window.Page.DisplayAlert("Registration Error", $"An unexpected error occurred: {ex.Message}", "OK");
+            if (App.Current?.Windows[0].Page != null) // Changed
+                await App.Current!.Windows[0].Page!.DisplayAlertAsync("Registration Error", $"An unexpected error occurred: {ex.Message}", "OK"); // Changed
             RegistrationCompleted?.Invoke(this, false);
         }
         finally
         {
-            // Re-enable buttons
             NextButton.IsEnabled = true;
             BackButton.IsEnabled = true;
             NextButton.Text = "Register";
@@ -216,19 +227,19 @@ public partial class Register : ContentView
         _username = null;
         _email = null;
         _password = null;
-        _uniqueKey = null;
+        _vaultPassword = null;
         
         _usernameStep.Reset();
         _emailStep.Reset();
         _passwordStep.Reset();
+        _vaultPasswordStep.Reset();
         
         ShowStep(1);
     }
     
-    // Simple class to receive token response
     private class RegistrationResponse
     {
         public string? Message { get; set; }
         public string? Token { get; set; }
     }
-} 
+}

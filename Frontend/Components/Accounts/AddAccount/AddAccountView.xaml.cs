@@ -5,13 +5,13 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
 using Frontend.Services;
+using Frontend.Components.Toasts;
 
 namespace Frontend.Components.Accounts.AddAccount
 {
     public partial class AddAccountView : ContentPage
     {
         private readonly string _platformName;
-        private readonly string _username;
         private bool _showPassword = false;
 
         public AddAccountView(string platformName)
@@ -20,7 +20,7 @@ namespace Frontend.Components.Accounts.AddAccount
             _platformName = platformName;
             
             // Get the username from local storage
-            _username = GetUsernameFromLocalStorage();
+            // _username = GetUsernameFromLocalStorage(); // Removed this line
             
             // Set the platform name in the UI
             PlatformNameLabel.Text = platformName;
@@ -31,20 +31,7 @@ namespace Frontend.Components.Accounts.AddAccount
             ShowPasswordButton.Clicked += OnShowPasswordButtonClicked;
         }
         
-        private string GetUsernameFromLocalStorage()
-        {
-            // Retrieve the username from secure storage
-            string username = Microsoft.Maui.Storage.Preferences.Get("Username", string.Empty);
-            
-            if (string.IsNullOrEmpty(username))
-            {
-                // No fallback - just return empty
-                // An error will be shown when trying to create the account
-                return string.Empty;
-            }
-            
-            return username;
-        }
+
 
         private void OnShowPasswordButtonClicked(object? sender, EventArgs e)
         {
@@ -58,20 +45,20 @@ namespace Frontend.Components.Accounts.AddAccount
             // Validate inputs
             if (string.IsNullOrWhiteSpace(UsernameEntry.Text))
             {
-                await DisplayAlert("Validation Error", "Username is required.", "OK");
+                ToastService.ShowToast("Username is required.", ToastType.Error);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(PasswordEntry.Text))
             {
-                await DisplayAlert("Validation Error", "Password is required.", "OK");
+                ToastService.ShowToast("Password is required.", ToastType.Error);
                 return;
             }
             
-            // Check if username is available
-            if (string.IsNullOrEmpty(_username))
+            // Check if user is logged in
+            if (!SessionService.Instance.IsLoggedIn)
             {
-                await DisplayAlert("Authentication Error", "User not authenticated. Please log in again.", "OK");
+                ToastService.ShowToast("User not authenticated. Please log in again.", ToastType.Error);
                 return;
             }
 
@@ -92,17 +79,17 @@ namespace Frontend.Components.Accounts.AddAccount
                 
                 if (response)
                 {
-                    await DisplayAlert("Success", "Account added successfully.", "OK");
+                    ToastService.ShowToast("Account added successfully.", ToastType.Success);
                     await Navigation.PopAsync(); // Return to previous page
                 }
                 else
                 {
-                    await DisplayAlert("Error", "Failed to add account. Please try again.", "OK");
+                    ToastService.ShowToast("Failed to add account. Please try again.", ToastType.Error);
                 }
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
+                ToastService.ShowToast($"An error occurred: {ex.Message}", ToastType.Error);
             }
         }
 
@@ -113,10 +100,19 @@ namespace Frontend.Components.Accounts.AddAccount
                 var json = JsonSerializer.Serialize(account);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 
-                // Add username to headers
+                string? token = SessionService.Instance.AuthToken;
+                string? username = SessionService.Instance.Username;
+
+                if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(username))
+                {
+                    return false;
+                }
+
+                // Create HTTP request
                 var request = new HttpRequestMessage(HttpMethod.Post, "api/account");
                 request.Content = content;
-                request.Headers.Add("X-Username", _username);
+                request.Headers.Add("X-Username", username);
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                 
                 var response = await ApiClient.Instance.SendAsync(request);
                 

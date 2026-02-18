@@ -24,19 +24,25 @@ namespace Frontend.Components.Dashboard
         {
             try
             {
-                // Get the database name from secure storage
-                var databaseName = await SecureStorage.GetAsync("database_name") ?? string.Empty;
-                
-                // Initialize the DashboardView control
                 if (DashboardViewControl != null)
                 {
-                    DashboardViewControl.Initialize(_username, databaseName);
+                    // Access the parent MainLayoutComponent via the logical parent chain
+                    // This assumes DashboardPage is hosted within MainLayout
+                    var mainLayout = this.Parent as Frontend.Components.Layout.MainLayout;
+                    if (mainLayout != null)
+                    {
+                        DashboardViewControl.Initialize(_username, mainLayout);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Error: Could not find parent MainLayout component.");
+                    }
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error initializing dashboard: {ex.Message}");
-                await DisplayAlert("Error", "Failed to initialize dashboard. Please try logging out and back in.", "OK");
+                await DisplayAlertAsync("Error", "Failed to initialize dashboard. Please try logging out and back in.", "OK");
             }
         }
     }

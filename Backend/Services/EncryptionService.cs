@@ -6,37 +6,16 @@ namespace Backend.Services
 {
     public class EncryptionService
     {
-        // Removed static _key. Encryption now requires a key to be passed.
-        // This enforces Zero-Knowledge as the server does not store the key (Vault Key).
-
         public EncryptionService()
         {
         }
 
-        /// <summary>
-        /// Derives a 32-byte encryption key from the user's Vault Key using SHA256.
-        /// </summary>
-        public string DeriveKeyFromVaultKey(string vaultKey)
-        {
-            if (string.IsNullOrEmpty(vaultKey))
-            {
-                throw new ArgumentNullException(nameof(vaultKey));
-            }
+        // Removed DeriveKeyFromVaultKey as it is now handled by PasswordHasher (Argon2id)
 
-            using (var sha256 = SHA256.Create())
-            {
-                byte[] keyBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(vaultKey));
-                return Convert.ToBase64String(keyBytes);
-            }
-        }
-
-        public string Encrypt(string plainText, string keyBase64)
+        public string Encrypt(string plainText, byte[] key)
         {
             if (string.IsNullOrEmpty(plainText)) return string.Empty;
-            if (string.IsNullOrEmpty(keyBase64)) throw new ArgumentNullException(nameof(keyBase64));
-
-            byte[] key = Convert.FromBase64String(keyBase64);
-            if (key.Length != 32) throw new ArgumentException("Key must be 32 bytes (256 bits).");
+            if (key == null || key.Length != 32) throw new ArgumentException("Key must be 32 bytes (256 bits).");
 
             byte[] plainTextBytes = Encoding.UTF8.GetBytes(plainText);
 
@@ -61,13 +40,10 @@ namespace Backend.Services
             return Convert.ToBase64String(encryptedData);
         }
 
-        public string Decrypt(string encryptedText, string keyBase64)
+        public string Decrypt(string encryptedText, byte[] key)
         {
             if (string.IsNullOrEmpty(encryptedText)) return string.Empty;
-            if (string.IsNullOrEmpty(keyBase64)) throw new ArgumentNullException(nameof(keyBase64));
-
-            byte[] key = Convert.FromBase64String(keyBase64);
-            if (key.Length != 32) throw new ArgumentException("Key must be 32 bytes (256 bits).");
+            if (key == null || key.Length != 32) throw new ArgumentException("Key must be 32 bytes (256 bits).");
 
             byte[] encryptedData = Convert.FromBase64String(encryptedText);
 
@@ -93,6 +69,8 @@ namespace Backend.Services
 
         public static string GenerateDeterministicHash(string text)
         {
+             // Keeping for legacy lookup purposes or if needed, though Argon2id is preferred for passwords.
+             // Lookups for Username/Email still need deterministic hash (SHA256 is fine for index lookup).
             if (string.IsNullOrEmpty(text))
             {
                 return string.Empty;

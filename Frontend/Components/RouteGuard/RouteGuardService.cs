@@ -15,7 +15,7 @@ namespace Frontend.Components.RouteGuard
             // Constructor is now empty
         }
 
-        public async Task<bool> ValidateModuleAccess(string username, string uniqueKey, string targetModule, string? token = null)
+        public async Task<bool> ValidateModuleAccess(string username, string vaultPassword, string targetModule, string? token = null)
         {
             try
             {
@@ -25,12 +25,11 @@ namespace Frontend.Components.RouteGuard
                 // Get the auth token: Use passed token if available, otherwise check secure storage
                 if (string.IsNullOrEmpty(token))
                 {
-                    token = await SecureStorage.GetAsync("auth_token");
+                    token = SessionService.Instance.AuthToken;
                 }
                 
                 if (string.IsNullOrEmpty(token))
                 {
-                    Console.WriteLine("ERROR: No auth token found (neither in memory nor storage). Validation will fail.");
                     return false;
                 }
                 Console.WriteLine($"Found auth token of length: {token.Length}. First 15 chars: {token.Substring(0, Math.Min(15, token.Length))}...");
@@ -38,8 +37,9 @@ namespace Frontend.Components.RouteGuard
 
                 var requestData = new RouteGuardRequest
                 {
-                    UniqueKey = uniqueKey,
-                    TargetModule = targetModule
+                    VaultPassword = vaultPassword,
+                    TargetModule = targetModule,
+                    UserIdentifier = SessionService.Instance.UserIdentifier // Pass identifier explicitly
                 };
 
                 // Create HTTP request with authorization header
@@ -59,12 +59,13 @@ namespace Frontend.Components.RouteGuard
                 if (response.IsSuccessStatusCode)
                 {
                     var result = await response.Content.ReadFromJsonAsync<RouteGuardResponse>();
-                    Console.WriteLine($"Response content: IsAuthorized={result?.IsAuthorized}, Message={result?.Message}");
+                    Console.WriteLine($"[RouteGuard] Success! IsAuthorized={result?.IsAuthorized}, Message={result?.Message}");
                     return result?.IsAuthorized ?? false;
                 }
                 
                 var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Error response: {errorContent}");
+                Console.WriteLine($"[RouteGuard] FAILED with status {response.StatusCode}");
+                Console.WriteLine($"[RouteGuard] Error Body: {errorContent}");
                 return false;
             }
             catch (Exception ex)
@@ -81,8 +82,9 @@ namespace Frontend.Components.RouteGuard
 
     public class RouteGuardRequest
     {
-        public required string UniqueKey { get; set; }
+        public required string VaultPassword { get; set; }
         public required string TargetModule { get; set; }
+        public string? UserIdentifier { get; set; }
     }
 
     public class RouteGuardResponse

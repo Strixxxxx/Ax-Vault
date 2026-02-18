@@ -11,8 +11,6 @@ public partial class Login : ContentView
         public bool Success { get; set; }
         public string? Token { get; set; }
         public string? Username { get; set; }
-        public string? DatabaseName { get; set; }
-        public string? Timezone { get; set; }
     }
 
     public event EventHandler<LoginSuccessEventArgs>? LoginCompleted;
@@ -64,7 +62,7 @@ public partial class Login : ContentView
             };
 
             // Call the backend API to authenticate using the centralized ApiClient
-            var response = await ApiClient.Instance.PostAsJsonAsync("api/login", loginData);
+            var response = await ApiClient.Instance.PostAsJsonAsync("api/auth/login", loginData);
             
             if (response.IsSuccessStatusCode)
             {
@@ -76,21 +74,13 @@ public partial class Login : ContentView
                     if (StayLoggedInCheckbox.IsChecked)
                     {
                         await SecureStorage.SetAsync("auth_token", result.Token);
-                        await SecureStorage.SetAsync("username", UsernameEntry.Text);
-                        
-                        if (!string.IsNullOrEmpty(result.DatabaseName))
-                            await SecureStorage.SetAsync("database_name", result.DatabaseName);
-                            
-                        if (!string.IsNullOrEmpty(result.Timezone))
-                            await SecureStorage.SetAsync("timezone", result.Timezone);
+                        await SecureStorage.SetAsync("username", result.Username ?? UsernameEntry.Text);
                     }
                     else 
                     {
                         // Ensure storage is clear if they didn't check it (safety)
                         SecureStorage.Remove("auth_token");
                         SecureStorage.Remove("username");
-                        SecureStorage.Remove("database_name");
-                        SecureStorage.Remove("timezone");
                     }
                     
                     // Signal successful login with data
@@ -98,9 +88,7 @@ public partial class Login : ContentView
                     { 
                         Success = true,
                         Token = result.Token,
-                        Username = UsernameEntry.Text,
-                        DatabaseName = result.DatabaseName,
-                        Timezone = result.Timezone
+                        Username = result.Username ?? UsernameEntry.Text
                     });
                 }
                 else
@@ -143,9 +131,6 @@ public partial class Login : ContentView
     {
         public string? Token { get; set; }
         public string? Username { get; set; }
-        public string? Email { get; set; }
-        public string? DatabaseName { get; set; }
-        public string? Timezone { get; set; }
     }
 
     // Reset the login form

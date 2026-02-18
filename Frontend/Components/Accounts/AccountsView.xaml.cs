@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using Microsoft.Maui.Devices;
 using Microsoft.Maui.Controls.Shapes;
 using Frontend.Services;
+using Frontend.Components.Accounts.Modals;
+using Frontend.Models;
 
 namespace Frontend.Components.Accounts
 {
@@ -17,31 +19,35 @@ namespace Frontend.Components.Accounts
     {
         // Defining colors as constants
         private static readonly Color NeonBlueColor = Color.FromRgb(0, 229, 255); // #00e5ff
+        private static readonly Color NeonGreenColor = Color.FromRgb(57, 255, 20); // #39ff14
+        private static readonly Color NeonRedColor = Color.FromRgb(255, 7, 58); // #ff073a
         private static readonly Color DarkBackgroundColor = Color.FromRgb(26, 26, 26); // #1a1a1a
         private static readonly Color BorderColor = Color.FromRgb(51, 51, 51); // #333333
         
-        public ObservableCollection<AccountItem> Accounts { get; set; } = new ObservableCollection<AccountItem>();
         public ObservableCollection<PlatformItem> Platforms { get; set; } = new ObservableCollection<PlatformItem>();
-        private string currentMode = "normal"; // normal, add, edit, delete
-		private bool _isInitialized = false;
-        private string _username = string.Empty;
-        private string _databaseName = string.Empty;
+        private bool _isInitialized = false;
+        private bool _isLoading = false;
+        private AccountDetailModal? _currentAccountDetailModal; // Added to hold reference
 
         public AccountsView()
         {
             InitializeComponent();
 
-            // Initialize event handlers
-            AddButton.Clicked += OnAddButtonClicked;
-            EditButton.Clicked += OnEditButtonClicked;
-            DeleteButton.Clicked += OnDeleteButtonClicked;
             SearchEntry.TextChanged += OnSearchTextChanged;
 
-            // Defer async initialization to the Loaded event to avoid deadlocks
             Loaded += OnAccountsViewLoaded;
+
+            // Trigger reload when the view becomes visible
+            this.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(IsVisible) && IsVisible)
+                {
+                    LoadPlatforms();
+                }
+            };
         }
 
-        private async void OnAccountsViewLoaded(object? sender, EventArgs e)
+        private void OnAccountsViewLoaded(object? sender, EventArgs e)
         {
             if (_isInitialized)
             {
@@ -49,68 +55,50 @@ namespace Frontend.Components.Accounts
             }
             _isInitialized = true;
 
-            // Get username and database name from secure storage asynchronously
-            _username = await SecureStorage.GetAsync("username") ?? string.Empty;
-            _databaseName = await SecureStorage.GetAsync("database_name") ?? string.Empty;
-
-            // Initially disable edit and delete buttons until an account is selected
-            UpdateButtonStates();
-            
-            // Load platforms and accounts when the view is initialized
+            // Load platforms when the view is initialized
             LoadPlatforms();
         }
 
         public async void LoadPlatforms()
         {
+            if (_isLoading) return;
+            _isLoading = true;
+
             try
             {
-                // Clear existing platforms
-                Platforms.Clear();
+                string? token = SessionService.Instance.AuthToken;
+                string? username = SessionService.Instance.Username;
                 
-                // Log connection info and credentials
-                Console.WriteLine("=== Starting LoadPlatforms ===");
-                Console.WriteLine($"Username from SecureStorage: {_username}");
-                Console.WriteLine($"Database name from SecureStorage: {_databaseName}");
-                Console.WriteLine($"API base URL: {ApiClient.Instance.BaseAddress}");
-                
-                // Create a new request message to add custom headers per-request
-                var request = new HttpRequestMessage(HttpMethod.Get, "api/platform");
-                request.Headers.Add("X-Username", _username);
-                request.Headers.Add("X-Database-Name", _databaseName);
-                
-                // Log the request details
-                Console.WriteLine("\n=== Making API Request ===");
-                Console.WriteLine($"GET {ApiClient.Instance.BaseAddress}api/platform");
-                Console.WriteLine("Headers:");
-                foreach (var header in request.Headers)
+                if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(username))
                 {
-                    Console.WriteLine($"  {header.Key}: {string.Join(", ", header.Value)}");
+                    Platforms.Clear(); // Only clear if we can't load
+                    NoAccountsLabel.IsVisible = true;
+                    NoAccountsLabel.Text = "You are not logged in.";
+                    _isLoading = false;
+                    return;
                 }
                 
-                // Fetch platforms from the API using the singleton ApiClient
+                // Clear existing platforms ONLY after we know we are authorized
+                Platforms.Clear();
+                
+                // Create a new request message
+                var request = new HttpRequestMessage(HttpMethod.Get, "api/platforms");
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+                
+                // Fetch platforms from the API
                 var response = await ApiClient.Instance.SendAsync(request);
-                
-                Console.WriteLine("\n=== API Response ===");
-                Console.WriteLine($"Status Code: {response.StatusCode}");
-                Console.WriteLine($"Reason Phrase: {response.ReasonPhrase}");
-                
-                var content = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Response Content: {content}");
                 
                 if (response.IsSuccessStatusCode)
                 {
                     var platforms = await response.Content.ReadFromJsonAsync<List<PlatformApiModel>>();
                     
-                    Console.WriteLine($"\n=== Processing Response ===");
-                    Console.WriteLine($"Received {platforms?.Count ?? 0} platforms from API");
-                    
                     if (platforms != null && platforms.Any())
                     {
                         foreach (var platform in platforms)
                         {
-                            Console.WriteLine($"Adding platform: {platform.Name} with {platform.AccountCount} accounts");
+                            string displayName = FormatPlatformName(platform.Name);
                             Platforms.Add(new PlatformItem { 
-                                Name = platform.Name, 
+                                Name = displayName, 
                                 AccountCount = platform.AccountCount 
                             });
                         }
@@ -120,7 +108,6 @@ namespace Frontend.Components.Accounts
                     }
                     else
                     {
-                        Console.WriteLine("No platforms found in the database.");
                         NoAccountsLabel.IsVisible = true;
                         NoAccountsLabel.Text = "No platforms found. Click 'Add' to create your first platform.";
                     }
@@ -128,62 +115,80 @@ namespace Frontend.Components.Accounts
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Error fetching platforms: {response.StatusCode}, {errorContent}");
                     
                     // Show error message in the UI
                     NoAccountsLabel.IsVisible = true;
                     NoAccountsLabel.Text = "Could not fetch platforms. Please check your connection.";
                 }
                 
-                Console.WriteLine("\n=== Rendering Platforms ===");
                 // Render platforms in normal mode
                 RenderPlatformsNormalMode();
-                Console.WriteLine("=== LoadPlatforms Complete ===\n");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\n=== ERROR in LoadPlatforms ===");
-                Console.WriteLine($"Error Message: {ex.Message}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                }
-                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+                Console.WriteLine($"Error in LoadPlatforms: {ex.Message}");
                 
                 // Show error message in the UI
                 NoAccountsLabel.IsVisible = true;
                 NoAccountsLabel.Text = $"Error connecting to server. Please try again later.";
             }
+            finally
+            {
+                _isLoading = false;
+            }
+        }
+
+        private string FormatPlatformName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return name;
+
+            // If name is like "1_Google", remove "1_"
+            int underscoreIndex = name.IndexOf('_');
+            if (underscoreIndex > 0 && underscoreIndex < name.Length - 1)
+            {
+                string prefix = name.Substring(0, underscoreIndex);
+                if (long.TryParse(prefix, out _))
+                {
+                    return name.Substring(underscoreIndex + 1);
+                }
+            }
+
+            return name;
         }
 
         private void RenderPlatformsNormalMode()
         {
-            // Clear existing account items
             AccountsGrid.Clear();
             AccountsGrid.RowDefinitions.Clear();
-            
-            // Hide the "no accounts" label if we have platforms
+            AccountsGrid.ColumnDefinitions.Clear();
+
             NoAccountsLabel.IsVisible = Platforms.Count == 0;
-            
             if (Platforms.Count == 0)
+            {
+                NoAccountsLabel.Text = "No accounts found. Create your first platform to get started.";
                 return;
-                
-            // Calculate rows needed (divide by 2 and round up)
-            int rowCount = (Platforms.Count + 1) / 2;
-            
-            // Create row definitions
+            }
+
+            bool isMobile = DeviceInfo.Idiom == DeviceIdiom.Phone;
+            int columns = isMobile ? 1 : 2;
+
+            for (int i = 0; i < columns; i++)
+            {
+                AccountsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+            }
+
+            int rowCount = (Platforms.Count + columns - 1) / columns;
             for (int i = 0; i < rowCount; i++)
             {
                 AccountsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             }
-            
-            // Add the platform items to the grid
+
             for (int i = 0; i < Platforms.Count; i++)
             {
                 var platform = Platforms[i];
-                int row = i / 2;
-                int col = i % 2;
-                
+                int row = i / columns;
+                int col = i % columns;
+
                 var platformFrame = CreatePlatformFrame(platform);
                 AccountsGrid.Add(platformFrame, col, row);
             }
@@ -191,11 +196,9 @@ namespace Frontend.Components.Accounts
         
         private Border CreatePlatformFrame(PlatformItem platform)
         {
-            // Create a tap gesture recognizer
             var tapGesture = new TapGestureRecognizer();
             tapGesture.Tapped += (s, e) => OnPlatformSelected(platform);
             
-            // Create the platform card
             var border = new Border
             {
                 BackgroundColor = DarkBackgroundColor,
@@ -206,10 +209,11 @@ namespace Frontend.Components.Accounts
                 Margin = new Thickness(0, 0, 0, 15),
                 BindingContext = platform
             };
-            border.GestureRecognizers.Add(tapGesture);
             
-            // Create grid for platform icon and name
-            var grid = new Grid
+            var mainStack = new VerticalStackLayout { Spacing = 10 };
+
+            // Top: Name and Info
+            var topGrid = new Grid
             {
                 ColumnDefinitions = 
                 {
@@ -218,7 +222,16 @@ namespace Frontend.Components.Accounts
                 }
             };
             
-            // Platform icon (folder)
+            // Differentiates the tap gesture for mobile and desktop
+            if (DeviceInfo.Idiom == DeviceIdiom.Phone)
+            {
+                topGrid.GestureRecognizers.Add(tapGesture);
+            }
+            else
+            {
+                border.GestureRecognizers.Add(tapGesture);
+            }
+
             var iconLabel = new Label
             {
                 Text = "📁",
@@ -227,13 +240,7 @@ namespace Frontend.Components.Accounts
                 Margin = new Thickness(0, 0, 15, 0)
             };
             
-            // Platform name and account count
-            var infoStack = new VerticalStackLayout
-            {
-                Spacing = 4
-            };
-            
-            // Platform name
+            var infoStack = new VerticalStackLayout { Spacing = 2 };
             infoStack.Children.Add(new Label
             {
                 Text = platform.Name,
@@ -242,336 +249,221 @@ namespace Frontend.Components.Accounts
                 FontSize = 18
             });
             
-            // Account count
             infoStack.Children.Add(new Label
             {
-                Text = $"{platform.AccountCount} {(platform.AccountCount == 1 ? "account" : "accounts")}",
-                TextColor = Colors.LightGray,
-                FontSize = 14
+                Text = $"{platform.AccountCount} accounts",
+                TextColor = Colors.Gray,
+                FontSize = 12
             });
+
+            topGrid.Add(iconLabel, 0, 0);
+            topGrid.Add(infoStack, 1, 0);
+
+            // Bottom: Edit and Delete Labels
+            var actionsStack = new HorizontalStackLayout { Spacing = 20, HorizontalOptions = LayoutOptions.End };
             
-            // Add elements to grid
-            grid.Add(iconLabel, 0, 0);
-            grid.Add(infoStack, 1, 0);
-            
-            // Add action button if in add/edit/delete mode
-            if (currentMode != "normal")
+            var editLabel = new Label
             {
-                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                
-                Button? actionButton = null;
-                
-                switch (currentMode)
+                Text = "✎ edit",
+                TextColor = NeonGreenColor,
+                FontSize = 14,
+                VerticalOptions = LayoutOptions.Center
+            };
+            var editTap = new TapGestureRecognizer();
+            editTap.Tapped += (s, e) => OnEditPlatformClicked(platform);
+            editLabel.GestureRecognizers.Add(editTap);
+
+            // Create a HorizontalStackLayout for the delete icon and text
+            var deleteLayout = new HorizontalStackLayout { Spacing = 5, VerticalOptions = LayoutOptions.Center };
+            var deleteIcon = new Image
+            {
+                Source = new FontImageSource
                 {
-                    case "add":
-                        actionButton = new Button
-                        {
-                            Text = "Add Account",
-                            BackgroundColor = NeonBlueColor,
-                            TextColor = Colors.Black,
-                            CornerRadius = 5,
-                            FontSize = 14,
-                            BindingContext = platform,
-                            HorizontalOptions = LayoutOptions.End
-                        };
-                        actionButton.Clicked += OnAddAccountButtonClicked;
-                        break;
-                    case "edit":
-                        actionButton = new Button
-                        {
-                            Text = "Edit Account",
-                            BackgroundColor = NeonBlueColor,
-                            TextColor = Colors.Black,
-                            CornerRadius = 5,
-                            FontSize = 14,
-                            BindingContext = platform,
-                            HorizontalOptions = LayoutOptions.End
-                        };
-                        actionButton.Clicked += OnEditAccountButtonClicked;
-                        break;
-                    case "delete":
-                        actionButton = new Button
-                        {
-                            Text = "Delete Account",
-                            BackgroundColor = NeonBlueColor,
-                            TextColor = Colors.Black,
-                            CornerRadius = 5,
-                            FontSize = 14,
-                            BindingContext = platform,
-                            HorizontalOptions = LayoutOptions.End
-                        };
-                        actionButton.Clicked += OnDeleteAccountButtonClicked;
-                        break;
-                }
-                
-                if (actionButton != null)
-                {
-                    grid.Add(actionButton, 2, 0);
-                }
-            }
+                    FontFamily = "MaterialIcons",
+                    Glyph = "\uE872", // Material Icon for delete (trash can)
+                    Color = NeonRedColor,
+                    Size = 14 // Match FontSize of the text
+                },
+                VerticalOptions = LayoutOptions.Center
+            };
+            var deleteText = new Label
+            {
+                Text = "delete",
+                TextColor = NeonRedColor,
+                FontSize = 14,
+                VerticalOptions = LayoutOptions.Center
+            };
+            deleteLayout.Children.Add(deleteIcon);
+            deleteLayout.Children.Add(deleteText);
+
+            var deleteTap = new TapGestureRecognizer();
+            deleteTap.Tapped += (s, e) => OnDeletePlatformClicked(platform);
+            deleteLayout.GestureRecognizers.Add(deleteTap);
+
+            actionsStack.Children.Add(editLabel);
+            actionsStack.Children.Add(deleteLayout); // Add the combined layout for delete
+
+            mainStack.Children.Add(topGrid);
+            mainStack.Children.Add(actionsStack);
             
-            border.Content = grid;
+            border.Content = mainStack;
             return border;
         }
 
-        private void OnPlatformSelected(PlatformItem platform)
+        private void ShowModal(ContentView modalContent)
         {
-            // This would typically navigate to show the accounts for this platform
-            // For now, we'll just highlight the selected platform
-            foreach (var child in AccountsGrid.Children)
+            ModalPlaceholder.Children.Clear();
+            ModalPlaceholder.Children.Add(modalContent);
+            ModalContainer.IsVisible = true;
+            
+            // If it's a modal that has CloseRequested, hook it
+            if (modalContent is PlatformModal pm) pm.CloseRequested += (s, e) => HideModal();
+            if (modalContent is DeletePlatformModal dpm) dpm.CloseRequested += (s, e) => HideModal();
+            if (modalContent is AccountDetailModal adm)
             {
-                if (child is Border itemBorder)
-                {
-                    if (itemBorder.BindingContext is PlatformItem p && p.Name == platform.Name)
-                    {
-                        itemBorder.Stroke = NeonBlueColor;
-                    }
-                    else
-                    {
-                        itemBorder.Stroke = BorderColor;
-                    }
-                }
+                adm.CloseRequested += (s, e) => HideModal();
+                adm.FormRequested += (s, e) => ShowAccountForm(e.Platform, e.VaultPassword, e.Account);
             }
+            if (modalContent is AccountFormModal afm) afm.CloseRequested += (s, e) => 
+            {
+                HideModal();
+                // If we came from detail, we might want to go back, but for now just close is safer/simpler
+            };
         }
 
-        private void UpdateButtonStates()
+        private void HideModal()
         {
-            // Reset button text
-            switch (currentMode)
-            {
-                case "normal":
-                    AddButton.Text = "Add";
-                    EditButton.Text = "Edit";
-                    DeleteButton.Text = "Delete";
-                    break;
-                case "add":
-                    AddButton.Text = "Add Platform";
-                    EditButton.IsEnabled = false;
-                    DeleteButton.IsEnabled = false;
-                    break;
-                case "edit":
-                    AddButton.Text = "Add";
-                    EditButton.Text = "Cancel";
-                    DeleteButton.Text = "Delete";
-                    AddButton.IsEnabled = false;
-                    AddButton.Opacity = 0.5;
-                    DeleteButton.IsEnabled = false;
-                    DeleteButton.Opacity = 0.5;
-                    break;
-                case "delete":
-                    AddButton.Text = "Add";
-                    EditButton.Text = "Edit";
-                    DeleteButton.Text = "Cancel";
-                    AddButton.IsEnabled = false;
-                    AddButton.Opacity = 0.5;
-                    EditButton.IsEnabled = false;
-                    EditButton.Opacity = 0.5;
-                    break;
-            }
+            ModalContainer.IsVisible = false;
+            ModalPlaceholder.Children.Clear();
         }
 
-        private void OnAddButtonClicked(object? sender, EventArgs e)
+        private void OnModalBackgroundTapped(object? sender, EventArgs e)
         {
-            if (currentMode == "normal")
+            // Optional: Hide modal when clicking background
+            // HideModal(); 
+        }
+
+        private async void OnPlatformSelected(PlatformItem platform)
+        {
+            if (DeviceInfo.Idiom == DeviceIdiom.Phone)
             {
-                // Change mode to add
-                currentMode = "add";
-                
-                // Update button states
-                AddButton.Text = "Add Platform";
-                EditButton.IsEnabled = false;
-                DeleteButton.IsEnabled = false;
-                
-                // Render platforms with "Add Account" buttons
-                RenderPlatformsInActionMode();
+                await Shell.Current.Navigation.PushAsync(new Pages.MobileAccountListPage(platform));
             }
             else
             {
-                // User clicked "Add Platform" button while in add mode
-                // Show the add platform modal
-                ShowAddPlatformModal();
+                var detailModal = new AccountDetailModal(platform.Name, SessionService.Instance.VaultPassword);
+                _currentAccountDetailModal = detailModal; // Store the reference
+                ShowModal(detailModal);
             }
-        }
-        
-        private void RenderPlatformsInActionMode()
-        {
-            // Re-render platforms with action buttons
-            RenderPlatformsNormalMode();
         }
 
-        private void OnAddAccountButtonClicked(object? sender, EventArgs e)
+
+        private void OnAddPlatformClicked(object? sender, EventArgs e)
         {
-            if (sender is Button button && button.BindingContext is PlatformItem platform)
+            var modal = new PlatformModal(true);
+            modal.PlatformsUpdated += (s, ev) => LoadPlatforms();
+            ShowModal(modal);
+        }
+
+        private async void OnEditPlatformClicked(PlatformItem platform)
+        {
+            if (DeviceInfo.Idiom == DeviceIdiom.Phone)
             {
-                // Navigate to the Add Account page with the platform name
-                // For now, just show an alert
-                this.Window.Page?.DisplayAlert("Add Account", $"Adding account to {platform.Name}", "OK");
+                await Shell.Current.Navigation.PushAsync(new Pages.MobileEditPlatformPage(platform.Name));
+            }
+            else
+            {
+                var modal = new PlatformModal(false, platform.Name);
+                modal.PlatformsUpdated += (s, ev) => LoadPlatforms();
+                ShowModal(modal);
             }
         }
-        
-        private void OnEditAccountButtonClicked(object? sender, EventArgs e)
+
+        private async void OnDeletePlatformClicked(PlatformItem platform)
         {
-            if (sender is Button button && button.BindingContext is PlatformItem platform)
+            if (DeviceInfo.Idiom == DeviceIdiom.Phone)
             {
-                // Navigate to the Edit Account page with the platform name
-                // For now, just show an alert
-                this.Window.Page?.DisplayAlert("Edit Account", $"Editing account in {platform.Name}", "OK");
+                await Shell.Current.Navigation.PushAsync(new Pages.MobileDeletePlatformPage(platform.Name));
+            }
+            else
+            {
+                var modal = new DeletePlatformModal(platform.Name);
+                modal.PlatformsUpdated += (s, ev) => LoadPlatforms();
+                ShowModal(modal);
             }
         }
-        
-        private void OnDeleteAccountButtonClicked(object? sender, EventArgs e)
+
+        private void ShowAccountForm(string platform, string vaultPassword, AccountResponseModel? account = null)
         {
-            if (sender is Button button && button.BindingContext is PlatformItem platform)
+            var formModal = new AccountFormModal(platform, vaultPassword, account);
+            formModal.AccountUpdated += async (s, ev) => 
             {
-                // Show confirmation dialog and delete the account
-                // For now, just show an alert
-                this.Window.Page?.DisplayAlert("Delete Account", $"Deleting account from {platform.Name}", "OK");
-            }
-        }
-        
-        private async void ShowAddPlatformModal()
-        {
-            var addPlatformModal = new AddPlatform.AddPlatformModal();
-            
-            // Subscribe to the platform created event
-            addPlatformModal.PlatformCreated += (sender, success) =>
-            {
-                if (success)
+                // Refresh the list of platforms to update account counts
+                LoadPlatforms();
+                
+                // Also refresh the currently open AccountDetailModal if it exists
+                if (_currentAccountDetailModal != null)
                 {
-                    // Reload platforms after a new one is created
-                    LoadPlatforms();
-                    
-                    // Reset mode to normal
-                    currentMode = "normal";
-                    UpdateButtonStates();
+                    await _currentAccountDetailModal.LoadAccounts();
                 }
+                
+                HideModal();
+                // If we came from detail, we might want to go back, but for now just close is safer/simpler
             };
-            
-            // Show the modal
-            if (this.Window.Page?.Navigation != null)
-            {
-                await Application.Current.MainPage.Navigation.PushModalAsync(addPlatformModal);
-            }
-        }
-
-        private void OnEditButtonClicked(object? sender, EventArgs e)
-        {
-            if (currentMode == "normal")
-            {
-                // Switch to edit mode
-                currentMode = "edit";
-                UpdateButtonStates();
-                RenderPlatformsInActionMode();
-            }
-            else if (currentMode == "edit")
-            {
-                // Switch back to normal mode
-                currentMode = "normal";
-                UpdateButtonStates();
-                RenderPlatformsNormalMode();
-            }
-        }
-
-        private void OnDeleteButtonClicked(object? sender, EventArgs e)
-        {
-            if (currentMode == "normal")
-            {
-                // Switch to delete mode
-                currentMode = "delete";
-                UpdateButtonStates();
-                RenderPlatformsInActionMode();
-            }
-            else if (currentMode == "delete")
-            {
-                // Switch back to normal mode
-                currentMode = "normal";
-                UpdateButtonStates();
-                RenderPlatformsNormalMode();
-            }
+            ShowModal(formModal);
         }
 
         private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
         {
             string searchText = e.NewTextValue?.ToLower() ?? string.Empty;
-            
+
             if (string.IsNullOrWhiteSpace(searchText))
             {
-                // If search is empty, show all platforms
-                if (currentMode == "normal")
-                {
-                    RenderPlatformsNormalMode();
-                }
-                else
-                {
-                    RenderPlatformsInActionMode();
-                }
+                RenderPlatformsNormalMode();
+                return;
             }
-            else
+            
+            var filteredPlatforms = Platforms
+                .Where(p => p.Name.ToLower().Contains(searchText))
+                .ToList();
+
+            AccountsGrid.Clear();
+            AccountsGrid.RowDefinitions.Clear();
+            AccountsGrid.ColumnDefinitions.Clear();
+
+            if (filteredPlatforms.Count == 0)
             {
-                // Filter platforms based on search text
-                var filteredPlatforms = Platforms
-                    .Where(p => p.Name.ToLower().Contains(searchText))
-                    .ToList();
-                
-                // Clear existing items
-                AccountsGrid.Clear();
-                AccountsGrid.RowDefinitions.Clear();
-                
-                // Show "no platforms" message if no results found
-                NoAccountsLabel.IsVisible = filteredPlatforms.Count == 0;
-                if (NoAccountsLabel.IsVisible)
-                {
-                    NoAccountsLabel.Text = $"No platforms found matching '{searchText}'.";
-                }
-                
-                if (filteredPlatforms.Count == 0)
-                    return;
-                    
-                // Calculate rows needed (divide by 2 and round up)
-                int rowCount = (filteredPlatforms.Count + 1) / 2;
-                
-                // Create row definitions
-                for (int i = 0; i < rowCount; i++)
-                {
-                    AccountsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                }
-                
-                // Add the filtered platform items to the grid
-                for (int i = 0; i < filteredPlatforms.Count; i++)
-                {
-                    var platform = filteredPlatforms[i];
-                    int row = i / 2;
-                    int col = i % 2;
-                    
-                    var platformFrame = CreatePlatformFrame(platform);
-                    AccountsGrid.Add(platformFrame, col, row);
-                }
+                NoAccountsLabel.IsVisible = true;
+                NoAccountsLabel.Text = $"No platforms found matching '{searchText}'.";
+                return;
+            }
+            
+            NoAccountsLabel.IsVisible = false;
+
+            bool isMobile = DeviceInfo.Idiom == DeviceIdiom.Phone;
+            int columns = isMobile ? 1 : 2;
+
+            for (int i = 0; i < columns; i++)
+            {
+                AccountsGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+            }
+
+            int rowCount = (filteredPlatforms.Count + columns - 1) / columns;
+            for (int i = 0; i < rowCount; i++)
+            {
+                AccountsGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
+
+            for (int i = 0; i < filteredPlatforms.Count; i++)
+            {
+                var platform = filteredPlatforms[i];
+                int row = i / columns;
+                int col = i % columns;
+
+                var platformFrame = CreatePlatformFrame(platform);
+                AccountsGrid.Add(platformFrame, col, row);
             }
         }
 
-        // This class represents a platform item in the UI
-        public class PlatformItem
-        {
-            public string Name { get; set; } = string.Empty;
-            public int AccountCount { get; set; }
-        }
-
-        // This class represents an account item in the UI
-        public class AccountItem
-        {
-            public string Id { get; set; } = string.Empty;
-            public string Platform { get; set; } = string.Empty;
-            public string Username { get; set; } = string.Empty;
-            public string Password { get; set; } = string.Empty;
-            public DateTime Created { get; set; }
-            public DateTime LastModified { get; set; }
-        }
-
-        // Add this class to represent the platform data returned from the API
-        public class PlatformApiModel
-        {
-            public string Name { get; set; } = string.Empty;
-            public int AccountCount { get; set; }
-        }
     }
 }

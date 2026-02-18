@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:Frontend.Models"
+             xmlns:local="clr-namespace:Frontend.Components.Modals"
+             x:Class="Frontend.Components.Modals.DashboardAccountListModal"
+             x:DataType="local:DashboardAccountListModal"
+             BackgroundColor="#1a1a1a">
+
+    <ContentView.Resources>
+        <ResourceDictionary>
+            <!-- DataTemplate for Desktop (Table View) -->
+            <DataTemplate x:Key="DesktopAccountItemTemplate" x:DataType="models:DashboardAccountItem">
+                <Border BackgroundColor="#1a1a1a" Stroke="#333333" StrokeThickness="1" Padding="10,5" Margin="0,0,0,0">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="5"/>
+                    </Border.StrokeShape>
+                    <Grid ColumnDefinitions="0.1*,0.25*,0.2*,0.25*,0.2*" ColumnSpacing="10">
+                        <Label Text="{Binding Id}" TextColor="White" FontSize="14" Grid.Column="0" VerticalOptions="Center"/>
+                        <Label Text="{Binding Username}" TextColor="White" FontSize="14" Grid.Column="1" VerticalOptions="Center"/>
+                        <Grid Grid.Column="2" ColumnDefinitions="*,Auto" ColumnSpacing="5" VerticalOptions="Center">
+                            <Label Text="{Binding DisplayedPassword}" TextColor="White" FontSize="14" VerticalOptions="Center" Grid.Column="0"/>
+                            <ImageButton BackgroundColor="Transparent" Command="{Binding TogglePasswordVisibilityCommand}" CommandParameter="{Binding .}" VerticalOptions="Center" WidthRequest="24" HeightRequest="24" Grid.Column="1">
+                                <ImageButton.Source>
+                                    <FontImageSource FontFamily="MaterialIcons" Glyph="{Binding RevealPasswordIcon}" Color="White" Size="24"/>
+                                </ImageButton.Source>
+                            </ImageButton>
+                        </Grid>
+                        <Label Text="{Binding Description}" TextColor="White" FontSize="14" Grid.Column="3" VerticalOptions="Center"/>
+                        <Label Text="{Binding CreatedAt, StringFormat='{0:MM/dd/yyyy hh:mm:ss tt}'}" TextColor="White" FontSize="14" Grid.Column="4" VerticalOptions="Center"/>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+
+            <!-- DataTemplate for Mobile (Card View) -->
+            <DataTemplate x:Key="MobileAccountItemTemplate" x:DataType="models:DashboardAccountItem">
+                <Border BackgroundColor="#2c2c2c" Stroke="#444" Padding="15" Margin="0,5">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="8"/>
+                    </Border.StrokeShape>
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="{Binding Username}" TextColor="#00e5ff" FontSize="18" FontAttributes="Bold"/>
+                        <Grid ColumnDefinitions="*, Auto" Margin="0,5,0,0">
+                            <Label Text="{Binding DisplayedPassword}" VerticalOptions="Center" TextColor="White" FontSize="16"/>
+                            <ImageButton Command="{Binding TogglePasswordVisibilityCommand}" Grid.Column="1" VerticalOptions="Center" BackgroundColor="Transparent" WidthRequest="30" HeightRequest="30">
+                                <ImageButton.Source>
+                                    <FontImageSource FontFamily="MaterialIcons" Glyph="{Binding RevealPasswordIcon}" Color="#00e5ff" Size="24"/>
+                                </ImageButton.Source>
+                            </ImageButton>
+                        </Grid>
+                        <Label Text="{Binding Description}" TextColor="LightGray" FontSize="14" LineBreakMode="WordWrap"/>
+                        <Label Text="{Binding CreatedAt, StringFormat='Added on {0:d}'}" TextColor="Gray" FontSize="12" HorizontalOptions="End"/>
+                    </VerticalStackLayout>
+                </Border>
+            </DataTemplate>
+        </ResourceDictionary>
+    </ContentView.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            <!-- Close Button -->
+            <Button Text="✕" Clicked="OnCloseClicked" HorizontalOptions="End" BackgroundColor="Transparent" TextColor="Gray" FontSize="16" WidthRequest="40" HeightRequest="40"/>
+
+            <Label Text="{Binding Platform.Name}" TextColor="#00e5ff" FontSize="28" FontAttributes="Bold" HorizontalOptions="Center" />
+            <Label Text="{Binding Platform.AccountCountDisplay}" TextColor="LightGray" FontSize="16" HorizontalOptions="Center" Margin="0,0,0,10"/>
+            
+            <!-- Table Headers (Desktop Only) -->
+            <Grid ColumnDefinitions="0.1*,0.25*,0.2*,0.25*,0.2*" BackgroundColor="#333333" Padding="10,5" ColumnSpacing="10" IsVisible="{Binding HasAccounts}">
+                <Grid.IsVisible>
+                    <OnIdiom x:TypeArguments="x:Boolean">
+                        <OnIdiom.Phone>False</OnIdiom.Phone>
+                        <OnIdiom.Desktop>True</OnIdiom.Desktop>
+                    </OnIdiom>
+                </Grid.IsVisible>
+                <Label Text="ID" TextColor="Gray" FontSize="12" FontAttributes="Bold" Grid.Column="0"/>
+                <Label Text="Username" TextColor="Gray" FontSize="12" FontAttributes="Bold" Grid.Column="1"/>
+                <Label Text="Password" TextColor="Gray" FontSize="12" FontAttributes="Bold" Grid.Column="2"/>
+                <Label Text="Description" TextColor="Gray" FontSize="12" FontAttributes="Bold" Grid.Column="3"/>
+                <Label Text="Created At" TextColor="Gray" FontSize="12" FontAttributes="Bold" Grid.Column="4"/>
+            </Grid>
+
+            <!-- Accounts List -->
+            <CollectionView x:Name="AccountsCollectionView" ItemsSource="{Binding Accounts}" SelectionMode="None">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="5" />
+                </CollectionView.ItemsLayout>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentView>

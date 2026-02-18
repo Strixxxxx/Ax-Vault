@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                                  xmlns:models="clr-namespace:Frontend.Models"
+                                  x:Class="Frontend.Components.Accounts.Modals.AccountDetailModal">    
+    <Frame BackgroundColor="#121212" 
+           BorderColor="#333333" 
+           CornerRadius="10" 
+           Padding="0" 
+           HasShadow="True">
+        <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="20">
+            
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
+                <Label Grid.Column="0" Text="📁" FontSize="20" VerticalOptions="Center" Margin="0,0,10,0"/>
+                <Label Grid.Column="1" x:Name="PlatformTitle" Text="Platform Name" FontSize="18" FontAttributes="Bold" TextColor="#00e5ff" VerticalOptions="Center"/>
+                <Button Grid.Column="2" Text="✕" FontSize="16" TextColor="Gray" BackgroundColor="Transparent" Clicked="OnCloseClicked" WidthRequest="40" HeightRequest="40"/>
+            </Grid>
+
+            <!-- Search and Add -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,15" ColumnSpacing="10">
+                <Border Grid.Column="0" BackgroundColor="#1a1a1a" Stroke="#333333" Padding="10,0">
+                    <Entry x:Name="SearchEntry" 
+                           Placeholder="Search accounts..." 
+                           PlaceholderColor="#555555" 
+                           TextColor="White" 
+                           HeightRequest="35"
+                           TextChanged="OnSearchTextChanged"/>
+                </Border>
+                <Button Grid.Column="1" Text="＋" BackgroundColor="#00e5ff" TextColor="Black" WidthRequest="40" HeightRequest="40" CornerRadius="5" Clicked="OnAddAccountClicked"/>
+            </Grid>
+
+            <!-- Accounts List -->
+            <CollectionView Grid.Row="2" x:Name="AccountsCollection">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:AccountResponseModel">
+                        <Border Margin="0,0,0,10" BackgroundColor="#1a1a1a" Stroke="#333333" Padding="12">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="{Binding Username}" TextColor="#00e5ff" FontSize="14" FontAttributes="Bold"/>
+                                    <Label Text="••••••••" TextColor="Gray" FontSize="12" x:Name="PasswordLabel"/>
+                                </VerticalStackLayout>
+                                
+                                <HorizontalStackLayout Grid.Column="1" Spacing="12" VerticalOptions="Center">
+                                    <Label Text="✎" TextColor="#39ff14" FontSize="16" VerticalOptions="Center">
+                                        <Label.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnEditAccountTapped" CommandParameter="{Binding .}"/>
+                                        </Label.GestureRecognizers>
+                                    </Label>
+                                    <Image>
+                                        <Image.Source>
+                                            <FontImageSource FontFamily="MaterialIcons"
+                                                            Glyph="&#xe872;"
+                                                            Color="#ff073a"
+                                                            Size="16" />
+                                        </Image.Source>
+                                        <Image.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnDeleteAccountTapped" CommandParameter="{Binding .}"/>
+                                        </Image.GestureRecognizers>
+                                    </Image>
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label Grid.Row="3" x:Name="NoAccountsLabel" Text="No accounts found." TextColor="Gray" HorizontalOptions="Center" IsVisible="False" Margin="0,10,0,0"/>
+
+        </Grid>
+    </Frame>
+</ContentView>

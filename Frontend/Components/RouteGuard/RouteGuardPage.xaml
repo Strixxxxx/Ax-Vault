@@ -7,13 +7,14 @@
              Title="Security Verification"
              BackgroundColor="#1a1a1a">
     
-    <Grid VerticalOptions="Center" HorizontalOptions="Center" Padding="20">
+    <Grid VerticalOptions="CenterAndExpand" HorizontalOptions="Center" Padding="20">
         <!-- Main Card -->
         <Border StrokeShape="RoundRectangle 10"
                 Stroke="#00e5ff"
                 StrokeThickness="1"
                 BackgroundColor="#222222"
-                WidthRequest="400">
+                HorizontalOptions="Center"
+                MaximumWidthRequest="350">
             <Border.Shadow>
                 <Shadow Brush="#00e5ff"
                         Offset="0,0"
@@ -29,7 +30,7 @@
                        FontAttributes="Bold"
                        HorizontalOptions="Center" />
                 
-                <Label Text="Please enter your unique key to access this module" 
+                <Label Text="Please enter your vault password to access this module" 
                        FontSize="14" 
                        TextColor="White"
                        HorizontalOptions="Center"
@@ -47,25 +48,26 @@
                        TextColor="White"
                        Margin="0,0,0,5" />
                 
-                <!-- Unique Key -->
-                <Label Text="Unique Key:" 
+                <!-- Vault Password -->
+                <Label Text="Vault Password:" 
                        FontSize="14" 
                        TextColor="#00e5ff" />
                 
-                <!-- Unique Key Entry with Toggle Visibility Button inside the field -->
+                <!-- Vault Password Entry with Toggle Visibility Button inside the field -->
                 <Grid Margin="0,0,0,5">
                     <Border StrokeShape="RoundRectangle 4"
                             Stroke="#333333"
                             StrokeThickness="1"
                             BackgroundColor="#333333">
                         <Grid ColumnDefinitions="*, Auto">
-                            <Entry x:Name="UniqueKeyEntry" 
+                            <Entry x:Name="VaultPasswordEntry" 
                                   IsPassword="{Binding IsPasswordHidden}"
-                                  Placeholder="Enter your unique key"
+                                  Placeholder="Enter your vault password"
                                   TextColor="White"
                                   BackgroundColor="Transparent"
                                   PlaceholderColor="LightGray"
-                                  Margin="5,0,0,0" />
+                                  Margin="5,0,0,0"
+                                  Completed="OnVaultPasswordEntryCompleted" />
                             
                             <Button Grid.Column="1"
                                     x:Name="TogglePasswordButton"

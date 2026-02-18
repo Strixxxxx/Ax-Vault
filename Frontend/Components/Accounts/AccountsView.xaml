@@ -3,60 +3,96 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Frontend.Components.Accounts.AccountsView">
     
-    <VerticalStackLayout Padding="20" Spacing="20">
-        <!-- Header with search and action buttons -->
-        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,20">
-            <Entry Grid.Column="0" 
-                   Placeholder="Search accounts..." 
-                   PlaceholderColor="#666666"
-                   TextColor="White"
-                   BackgroundColor="#262626"
-                   x:Name="SearchEntry"/>
-            
-            <HorizontalStackLayout Grid.Column="1" Spacing="10" HorizontalOptions="End">
-                <Button Text="Add" 
-                        BackgroundColor="#00e5ff" 
-                        TextColor="Black"
-                        CornerRadius="5"
-                        HeightRequest="40"
-                        WidthRequest="90"
-                        x:Name="AddButton"/>
+    <Grid>
+        <!-- Main Content -->
+        <Grid RowDefinitions="Auto,*" Padding="20">
+            <!-- Header: Search and Add -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,20">
+                <Border Grid.Column="0"
+                    BackgroundColor="#1a1a1a" 
+                    Stroke="#333333" 
+                    Padding="10,0" 
+                    Margin="0,0,10,0">
+                <Grid ColumnDefinitions="*,Auto">
+                    <Entry x:Name="SearchEntry" 
+                           Placeholder="Search platforms..." 
+                           PlaceholderColor="#555555" 
+                           TextColor="White" 
+                           HeightRequest="40"
+                           VerticalOptions="Center"
+                           Grid.Column="0"/>
+                    <ImageButton Grid.Column="1"
+                                 BackgroundColor="Transparent"
+                                 VerticalOptions="Center"
+                                 WidthRequest="30"
+                                 HeightRequest="30"
+                                 Padding="0">
+                        <ImageButton.Source>
+                            <FontImageSource FontFamily="MaterialIcons" 
+                                             Glyph="&#xe8b6;"
+                                             Color="#00e5ff"
+                                             Size="24"/>
+                        </ImageButton.Source>
+                    </ImageButton>
+                </Grid>
+            </Border>
                 
-                <Button Text="Edit" 
+                <Button Grid.Column="1"
+                        x:Name="AddPlatformButton"
+                        Text="+ Add" 
                         BackgroundColor="#00e5ff" 
-                        TextColor="Black"
+                        TextColor="Black" 
                         CornerRadius="5"
                         HeightRequest="40"
-                        WidthRequest="90"
-                        x:Name="EditButton"/>
-                
-                <Button Text="Delete" 
-                        BackgroundColor="#00e5ff" 
-                        TextColor="Black"
-                        CornerRadius="5"
-                        HeightRequest="40"
-                        WidthRequest="90"
-                        x:Name="DeleteButton"/>
-            </HorizontalStackLayout>
-        </Grid>
-        
-        <!-- Two-column layout for platform items -->
-        <ScrollView>
-            <Grid ColumnDefinitions="*,*" 
-                  ColumnSpacing="15" 
-                  RowSpacing="15" 
-                  x:Name="AccountsGrid"
-                  Padding="0,0,0,20">
-                <!-- Platform items will be added here programmatically -->
+                        Padding="15,0"
+                        VerticalOptions="Center"
+                        Clicked="OnAddPlatformClicked"/>
             </Grid>
-        </ScrollView>
 
-        <!-- No accounts label -->
-        <Label Text="No platforms found. Click 'Add' to create your first platform." 
-               TextColor="White" 
-               HorizontalOptions="Center"
-               VerticalOptions="Center"
-               IsVisible="False"
-               x:Name="NoAccountsLabel"/>
-    </VerticalStackLayout>
-</ContentView> 
+            <!-- Dynamic Grid for Platforms -->
+            <ScrollView Grid.Row="1">
+                <VerticalStackLayout>
+                    <Grid x:Name="AccountsGrid" ColumnDefinitions="*,*" ColumnSpacing="15"/>
+                    
+                    <Label x:Name="NoAccountsLabel" 
+                           Text="No accounts found. Create your first platform to get started." 
+                           TextColor="Gray" 
+                           FontSize="16" 
+                           HorizontalOptions="Center" 
+                           VerticalOptions="Center" 
+                           Margin="0,50,0,0"
+                           IsVisible="False"/>
+                </VerticalStackLayout>
+            </ScrollView>
+        </Grid>
+
+        <!-- Modal Overlay Container -->
+        <Grid x:Name="ModalContainer" 
+              IsVisible="False" 
+              BackgroundColor="#CC000000"
+              InputTransparent="False">
+            <Grid.Padding>
+                <OnIdiom x:TypeArguments="Thickness">
+                    <OnIdiom.Phone>20</OnIdiom.Phone> <!-- Adjusted padding for mobile -->
+                    <OnIdiom.Desktop>0</OnIdiom.Desktop>
+                </OnIdiom>
+            </Grid.Padding>
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnModalBackgroundTapped"/>
+            </Grid.GestureRecognizers>
+            
+            <!-- Modal Content will be loaded here dynamically -->
+            <VerticalStackLayout x:Name="ModalPlaceholder"
+                                 HorizontalOptions="Center"
+                                 VerticalOptions="Center"
+                                 MaximumHeightRequest="700">
+                <VerticalStackLayout.WidthRequest>
+                    <OnIdiom x:TypeArguments="x:Double">
+                        <OnIdiom.Phone>360</OnIdiom.Phone>
+                        <OnIdiom.Desktop>500</OnIdiom.Desktop>
+                    </OnIdiom>
+                </VerticalStackLayout.WidthRequest>
+            </VerticalStackLayout>
+        </Grid>
+    </Grid>
+</ContentView>

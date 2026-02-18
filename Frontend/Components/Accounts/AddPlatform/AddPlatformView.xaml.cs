@@ -43,14 +43,14 @@ namespace Frontend.Components.Accounts.AddPlatform
             // Validate inputs
             if (string.IsNullOrWhiteSpace(PlatformNameEntry.Text))
             {
-                await DisplayAlert("Validation Error", "Platform name is required.", "OK");
+                await DisplayAlertAsync("Validation Error", "Platform name is required.", "OK");
                 return;
             }
             
             // Check if username is available
             if (string.IsNullOrEmpty(_username))
             {
-                await DisplayAlert("Authentication Error", "User not authenticated. Please log in again.", "OK");
+                await DisplayAlertAsync("Authentication Error", "User not authenticated. Please log in again.", "OK");
                 return;
             }
 
@@ -69,17 +69,17 @@ namespace Frontend.Components.Accounts.AddPlatform
                 
                 if (response)
                 {
-                    await DisplayAlert("Success", "Platform added successfully.", "OK");
+                    await DisplayAlertAsync("Success", "Platform added successfully.", "OK");
                     await Navigation.PopAsync(); // Return to previous page
                 }
                 else
                 {
-                    await DisplayAlert("Error", "Failed to add platform. Please try again.", "OK");
+                    await DisplayAlertAsync("Error", "Failed to add platform. Please try again.", "OK");
                 }
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Error", $"An error occurred: {ex.Message}", "OK");
+                await DisplayAlertAsync("Error", $"An error occurred: {ex.Message}", "OK");
             }
         }
 
