@@ -7,7 +7,7 @@ Ax Vault is a secure, multi-platform, and multi-tenant password management syste
 - **Zero-Knowledge Security**: End-to-end encryption using Argon2id for key derivation and AES-256-GCM for data encryption.
 - **Multi-Tenant Architecture**: A shared database using a `Vaults` directory table to navigate and manage isolated, user-specific dynamic tables (format: `[AccountID]_[Platform]`).
 - **Cross-Platform**: Built with .NET MAUI, supporting both **Windows** and **Android**.
-- **Automated Backups**: Secure, encrypted backup and restore functionality to keep your data safe.
+- **Built-In Customized Backups**: Secure, encrypted backup and restore functionality to keep your data safe.
 - **CI/CD Integration**: Seamless backend deployment to MonsterASP.net using GitHub Actions.
 
 ## 📂 Project Structure
