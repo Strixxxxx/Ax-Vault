@@ -51,7 +51,7 @@ jobs:
           JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
           JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
 
-  - name: Deploy to MonsterASP.NET via WebDeploy
+      - name: Deploy to MonsterASP.NET via WebDeploy
         shell: pwsh
         run: |
           $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
