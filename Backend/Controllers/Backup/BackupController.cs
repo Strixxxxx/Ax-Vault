@@ -23,15 +23,21 @@ namespace Backend.Controllers.Backup
         private readonly ILogger<BackupController> _logger;
         private readonly ApplicationDbContext _context;
         private readonly PlatformTableService _platformTableService;
+        private readonly ConnectionHelper _connectionHelper;
+        private readonly PasswordHasher _passwordHasher;
 
         public BackupController(
             ILogger<BackupController> logger,
             ApplicationDbContext context,
-            PlatformTableService platformTableService)
+            PlatformTableService platformTableService,
+            ConnectionHelper connectionHelper,
+            PasswordHasher passwordHasher)
         {
             _logger = logger;
             _context = context;
             _platformTableService = platformTableService;
+            _connectionHelper = connectionHelper;
+            _passwordHasher = passwordHasher;
         }
 
         /// <summary>
@@ -57,7 +63,7 @@ namespace Backend.Controllers.Backup
                     .ToListAsync();
 
                 var exportModel = new BackupExportModel { Version = 1 };
-                string connectionString = ConnectionHelper.GetMasterConnectionString();
+                string connectionString = _connectionHelper.GetMasterConnectionString();
 
                 // Step 2: For each platform, fetch the raw (vault-key-encrypted) account rows
                 foreach (var platformName in platformNames)
@@ -121,7 +127,7 @@ namespace Backend.Controllers.Backup
 
                 _logger.LogInformation("Backup import requested for AccountID: {accountId}", user.AccountID);
 
-                string connectionString = ConnectionHelper.GetMasterConnectionString();
+                string connectionString = _connectionHelper.GetMasterConnectionString();
                 int totalRestored = 0;
 
                 foreach (var platformBackup in importData.Platforms)
@@ -197,8 +203,8 @@ namespace Backend.Controllers.Backup
                 return null;
             }
 
-            var fixedSalt = PasswordHasher.GetDeterministicSalt();
-            var inputHash = PasswordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
+            var fixedSalt = _passwordHasher.GetDeterministicSalt();
+            var inputHash = _passwordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
             return await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
         }
     }

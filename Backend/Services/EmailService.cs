@@ -6,19 +6,23 @@ namespace Backend.Services
     public class EmailService
     {
         private readonly ILogger<EmailService> _logger;
+        private readonly IConfiguration _configuration;
 
-        public EmailService(ILogger<EmailService> logger)
+        public EmailService(ILogger<EmailService> logger, IConfiguration configuration)
         {
             _logger = logger;
+            _configuration = configuration;
         }
+
+        private string? GetSetting(string key) => _configuration[key] ?? Environment.GetEnvironmentVariable(key);
 
         public async Task<bool> SendOtpEmailAsync(string toEmail, string otp)
         {
-            var smtpHost = Environment.GetEnvironmentVariable("SMTP_HOST");
-            var smtpPort = Environment.GetEnvironmentVariable("SMTP_PORT");
-            var smtpUser = Environment.GetEnvironmentVariable("SMTP_USER");
-            var smtpPass = Environment.GetEnvironmentVariable("SMTP_PASS");
-            var fromEmail = Environment.GetEnvironmentVariable("SMTP_FROM") ?? smtpUser;
+            var smtpHost = GetSetting("SMTP_HOST");
+            var smtpPort = GetSetting("SMTP_PORT");
+            var smtpUser = GetSetting("SMTP_USER");
+            var smtpPass = GetSetting("SMTP_PASS");
+            var fromEmail = GetSetting("SMTP_FROM") ?? smtpUser;
 
             // If SMTP is not configured, fallback to console logging for dev/testing
             if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUser) || string.IsNullOrEmpty(smtpPass))

@@ -20,15 +20,18 @@ namespace Backend.Controllers
         private readonly ILogger<AuthController> _logger;
         private readonly ApplicationDbContext _context;
         private readonly EncryptionService _encryptionService; 
+        private readonly PasswordHasher _passwordHasher;
 
         public AuthController(
             ILogger<AuthController> logger,
             ApplicationDbContext context,
-            EncryptionService encryptionService)
+            EncryptionService encryptionService,
+            PasswordHasher passwordHasher)
         {
             _logger = logger;
             _context = context;
             _encryptionService = encryptionService;
+            _passwordHasher = passwordHasher;
         }
 
         #region Helper Endpoints
@@ -42,8 +45,8 @@ namespace Backend.Controllers
                 return BadRequest(new { Message = "Username is required" });
             }
 
-            var fixedSalt = PasswordHasher.GetDeterministicSalt();
-            var usernameHash = PasswordHasher.HashDeterministic(username.ToLowerInvariant(), fixedSalt);
+            var fixedSalt = _passwordHasher.GetDeterministicSalt();
+            var usernameHash = _passwordHasher.HashDeterministic(username.ToLowerInvariant(), fixedSalt);
             
             bool exists = await _context.Users.AnyAsync(u => u.UsernameHashed == usernameHash);
 
@@ -58,8 +61,8 @@ namespace Backend.Controllers
                 return BadRequest(new { Message = "Email is required" });
             }
 
-            var fixedSalt = PasswordHasher.GetDeterministicSalt();
-            var emailHash = PasswordHasher.HashDeterministic(email.ToLowerInvariant(), fixedSalt);
+            var fixedSalt = _passwordHasher.GetDeterministicSalt();
+            var emailHash = _passwordHasher.HashDeterministic(email.ToLowerInvariant(), fixedSalt);
             
             bool exists = await _context.Users.AnyAsync(u => u.EmailHashed == emailHash);
 
@@ -95,16 +98,16 @@ namespace Backend.Controllers
 
                 var normalizedUsername = model.Username.ToLowerInvariant();
                 var normalizedEmail = model.Email.ToLowerInvariant();
-                var fixedSalt = PasswordHasher.GetDeterministicSalt();
+                var fixedSalt = _passwordHasher.GetDeterministicSalt();
 
                 // Check for existing users via Deterministic Argon2id Hash
-                var usernameHash = PasswordHasher.HashDeterministic(normalizedUsername, fixedSalt);
+                var usernameHash = _passwordHasher.HashDeterministic(normalizedUsername, fixedSalt);
                 if (await _context.Users.AnyAsync(u => u.UsernameHashed == usernameHash))
                 {
                     return BadRequest(new { Message = "Username already exists" });
                 }
 
-                var emailHash = PasswordHasher.HashDeterministic(normalizedEmail, fixedSalt);
+                var emailHash = _passwordHasher.HashDeterministic(normalizedEmail, fixedSalt);
                 if (await _context.Users.AnyAsync(u => u.EmailHashed == emailHash))
                 {
                     return BadRequest(new { Message = "Email already exists" });
@@ -143,7 +146,7 @@ namespace Backend.Controllers
                 // "The hashed vault password should be stored on the memory only".
                 // I'll use the Fixed Salt (Application Pepper) for Vault Password derivation. This guarantees I can re-derive it.
                 
-                byte[] vaultKeyBytes = PasswordHasher.DeriveKeyFromVaultPassword(model.VaultPassword, fixedSalt);
+                byte[] vaultKeyBytes = _passwordHasher.DeriveKeyFromVaultPassword(model.VaultPassword, fixedSalt);
 
                 // 2. Generate Random Verifier
                 var randomVerifier = Guid.NewGuid().ToString();
@@ -154,7 +157,7 @@ namespace Backend.Controllers
                 string encryptedVerifier = _encryptionService.Encrypt(randomVerifier, vaultKeyBytes);
 
                 // 4. Hash Account Password (Argon2id - Random Salt is fine here as we store the hash string which includes the salt)
-                string passwordHash = PasswordHasher.HashPassword(model.Password);
+                string passwordHash = _passwordHasher.HashPassword(model.Password);
 
                 var user = new User
                 {
@@ -202,8 +205,8 @@ namespace Backend.Controllers
             try
             {
                 var normalizedInput = model.Username.ToLowerInvariant();
-                var fixedSalt = PasswordHasher.GetDeterministicSalt();
-                var inputHash = PasswordHasher.HashDeterministic(normalizedInput, fixedSalt);
+                var fixedSalt = _passwordHasher.GetDeterministicSalt();
+                var inputHash = _passwordHasher.HashDeterministic(normalizedInput, fixedSalt);
 
                 // Look up by Deterministic Hash
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
@@ -215,7 +218,7 @@ namespace Backend.Controllers
                     return Unauthorized(new { Message = "Invalid username or password" });
                 }
 
-                if (!PasswordHasher.VerifyPassword(user.PasswordHash, model.Password))
+                if (!_passwordHasher.VerifyPassword(user.PasswordHash, model.Password))
                 {
                     _logger.LogWarning($"Login: Password mismatch for user '{model.Username}'");
                     return Unauthorized(new { Message = "Invalid username or password" });
@@ -278,8 +281,8 @@ namespace Backend.Controllers
 
                  if (string.IsNullOrEmpty(usernameClaim)) return Unauthorized(new { Message = "User identity not found in token." });
 
-                 var fixedSalt = PasswordHasher.GetDeterministicSalt();
-                 var inputHash = PasswordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
+                 var fixedSalt = _passwordHasher.GetDeterministicSalt();
+                 var inputHash = _passwordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
                  
                  // Fix: Check both UsernameHashed and EmailHashed
                  var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
@@ -293,7 +296,7 @@ namespace Backend.Controllers
                  Console.WriteLine($"[VerifyVaultPassword] Verifying user '{usernameClaim}'...");
                  Console.WriteLine($"[VerifyVaultPassword] DB RandomVerifier (First 10): {user.RandomVerifier.Substring(0, Math.Min(10, user.RandomVerifier.Length))}...");
 
-                 byte[] vaultKeyBytes = PasswordHasher.DeriveKeyFromVaultPassword(model.VaultPassword, fixedSalt);
+                 byte[] vaultKeyBytes = _passwordHasher.DeriveKeyFromVaultPassword(model.VaultPassword, fixedSalt);
                  
                  Console.WriteLine("[VerifyVaultPassword] Attempting decryption...");
                  string decrypted = _encryptionService.Decrypt(user.RandomVerifier, vaultKeyBytes);

@@ -19,11 +19,14 @@ namespace Backend.Controllers.RouteGuard
         private readonly ILogger<RouteGuardController> _logger;
         private readonly EncryptionService _encryptionService;
 
-        public RouteGuardController(ApplicationDbContext context, ILogger<RouteGuardController> logger, EncryptionService encryptionService)
+        private readonly PasswordHasher _passwordHasher;
+
+        public RouteGuardController(ApplicationDbContext context, ILogger<RouteGuardController> logger, EncryptionService encryptionService, PasswordHasher passwordHasher)
         {
             _context = context;
             _logger = logger;
             _encryptionService = encryptionService;
+            _passwordHasher = passwordHasher;
         }
 
 
@@ -68,8 +71,8 @@ namespace Backend.Controllers.RouteGuard
                     return Unauthorized(new { Message = "User identity not found." });
                 }
 
-                var fixedSalt = PasswordHasher.GetDeterministicSalt();
-                var inputHash = PasswordHasher.HashDeterministic(identifier.ToLowerInvariant(), fixedSalt);
+                var fixedSalt = _passwordHasher.GetDeterministicSalt();
+                var inputHash = _passwordHasher.HashDeterministic(identifier.ToLowerInvariant(), fixedSalt);
 
                 // Fix: Check both UsernameHashed and EmailHashed
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
@@ -92,7 +95,7 @@ namespace Backend.Controllers.RouteGuard
                 // --- Verification Logic (Argon2id + Decryption) ---
                 // 1. Derive Key from Vault Password
                 Console.WriteLine("[RouteGuard] Deriving key from vault password...");
-                byte[] vaultKeyBytes = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, fixedSalt);
+                byte[] vaultKeyBytes = _passwordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, fixedSalt);
                 
                 try
                 {

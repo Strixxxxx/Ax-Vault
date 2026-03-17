@@ -6,12 +6,14 @@ namespace Backend.Services;
 public class PlatformTableService
 {
     private readonly ILogger<PlatformTableService> _logger;
+    private readonly ConnectionHelper _connectionHelper;
     private readonly string _connectionString;
 
-    public PlatformTableService(ILogger<PlatformTableService> logger)
+    public PlatformTableService(ILogger<PlatformTableService> logger, ConnectionHelper connectionHelper)
     {
         _logger = logger;
-        _connectionString = ConnectionHelper.GetMasterConnectionString();
+        _connectionHelper = connectionHelper;
+        _connectionString = _connectionHelper.GetMasterConnectionString();
     }
 
     /// <summary>

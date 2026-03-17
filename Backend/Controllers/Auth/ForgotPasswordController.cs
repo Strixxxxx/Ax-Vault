@@ -15,17 +15,23 @@ namespace Backend.Controllers
         private readonly ApplicationDbContext _context;
         private readonly EncryptionService _encryptionService;
         private readonly EmailService _emailService;
+        private readonly PasswordHasher _passwordHasher;
+        private readonly IConfiguration _configuration;
 
         public ForgotPasswordController(
             ILogger<ForgotPasswordController> logger,
             ApplicationDbContext context,
             EncryptionService encryptionService,
-            EmailService emailService)
+            EmailService emailService,
+            PasswordHasher passwordHasher,
+            IConfiguration configuration)
         {
             _logger = logger;
             _context = context;
             _encryptionService = encryptionService;
             _emailService = emailService;
+            _passwordHasher = passwordHasher;
+            _configuration = configuration;
         }
 
         // ─── Step 1: Verify Username/Email ─────────────────────────────────────
@@ -36,8 +42,8 @@ namespace Backend.Controllers
             if (string.IsNullOrWhiteSpace(model.Username))
                 return BadRequest(new { Message = "Username or Email is required." });
 
-            var fixedSalt = PasswordHasher.GetDeterministicSalt();
-            var inputHash = PasswordHasher.HashDeterministic(model.Username.ToLowerInvariant(), fixedSalt);
+            var fixedSalt = _passwordHasher.GetDeterministicSalt();
+            var inputHash = _passwordHasher.HashDeterministic(model.Username.ToLowerInvariant(), fixedSalt);
 
             // Check both username and email hashes, same as login
             var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
@@ -73,9 +79,9 @@ namespace Backend.Controllers
             string plaintextEmail;
             try
             {
-                var fixedSalt = PasswordHasher.GetDeterministicSalt();
-                byte[] vaultKeyBytes = PasswordHasher.DeriveKeyFromVaultPassword(
-                    Environment.GetEnvironmentVariable("BACKEND_SECRET_KEY") ?? string.Empty,
+                var fixedSalt = _passwordHasher.GetDeterministicSalt();
+                byte[] vaultKeyBytes = _passwordHasher.DeriveKeyFromVaultPassword(
+                    _configuration["BACKEND_SECRET_KEY"] ?? Environment.GetEnvironmentVariable("BACKEND_SECRET_KEY") ?? string.Empty,
                     fixedSalt);
                 plaintextEmail = _encryptionService.Decrypt(user.Email, vaultKeyBytes);
                 Array.Clear(vaultKeyBytes, 0, vaultKeyBytes.Length);
@@ -145,8 +151,8 @@ namespace Backend.Controllers
 
             try
             {
-                var fixedSalt = PasswordHasher.GetDeterministicSalt();
-                byte[] vaultKeyBytes = PasswordHasher.DeriveKeyFromVaultPassword(model.VaultPassword, fixedSalt);
+                var fixedSalt = _passwordHasher.GetDeterministicSalt();
+                byte[] vaultKeyBytes = _passwordHasher.DeriveKeyFromVaultPassword(model.VaultPassword, fixedSalt);
                 // Attempt decryption of RandomVerifier - if it succeeds, vault password is correct
                 _encryptionService.Decrypt(user.RandomVerifier, vaultKeyBytes);
                 Array.Clear(vaultKeyBytes, 0, vaultKeyBytes.Length);
@@ -185,7 +191,7 @@ namespace Backend.Controllers
             if (user == null)
                 return NotFound(new { Message = "Account not found." });
 
-            user.PasswordHash = PasswordHasher.HashPassword(model.NewPassword);
+            user.PasswordHash = _passwordHasher.HashPassword(model.NewPassword);
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("[ForgotPassword] Password reset for account {Id}.", model.AccountId);

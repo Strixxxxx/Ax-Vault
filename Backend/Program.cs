@@ -91,23 +91,26 @@ catch (Exception ex)
 }
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Register Security Services
+builder.Services.AddSingleton<PasswordHasher>();
+builder.Services.AddSingleton<ConnectionHelper>();
+
 string connectionString = string.Empty;
 
 try
 {
-    // Use ConnectionHelper to get the master connection string
-    connectionString = ConnectionHelper.GetMasterConnectionString();
+    // Use a temporary instance to get the connection string during startup
+    var tempHelper = new ConnectionHelper(builder.Configuration);
+    connectionString = tempHelper.GetMasterConnectionString();
     
     // Configure Entity Framework with PostgreSQL
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseNpgsql(connectionString));
 }
-catch (InvalidOperationException ex)
+catch (Exception ex)
 {
-    // Log the error and prevent the app from starting if the connection string is invalid
-    // A logger is not available here, so we use Console
-    Console.WriteLine($"❌ CRITICAL: {ex.Message}");
-    // Exit the application if database configuration is missing
+    Console.WriteLine($"❌ CRITICAL: Database configuration error: {ex.Message}");
     return;
 }
 
@@ -145,17 +148,18 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.MapInboundClaims = false; // Prevent mapping of standard JWT claims to SOAP-style claims
+    options.MapInboundClaims = false;
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER"),
-        ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
-        NameClaimType = JwtRegisteredClaimNames.UniqueName, // Look for unique_name claim
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("JWT_SECRET")!))
+        ValidIssuer = builder.Configuration["JWT_ISSUER"] ?? Environment.GetEnvironmentVariable("JWT_ISSUER"),
+        ValidAudience = builder.Configuration["JWT_AUDIENCE"] ?? Environment.GetEnvironmentVariable("JWT_AUDIENCE"),
+        NameClaimType = JwtRegisteredClaimNames.UniqueName,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+            builder.Configuration["JWT_SECRET"] ?? Environment.GetEnvironmentVariable("JWT_SECRET") ?? "fallback_secret_key_for_development_only"))
     };
 });
 

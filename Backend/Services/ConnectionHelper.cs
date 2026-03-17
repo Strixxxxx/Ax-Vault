@@ -1,31 +1,54 @@
 using Npgsql;
+using Microsoft.Extensions.Configuration;
 
 namespace Backend.Services
 {
-    public static class ConnectionHelper
+    public class ConnectionHelper
     {
-        private static readonly string? DbServer = Environment.GetEnvironmentVariable("DB_SERVER");
-        private static readonly string? DbUser = Environment.GetEnvironmentVariable("DB_USER");
-        private static readonly string? DbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
-        private static readonly string? DbPort = Environment.GetEnvironmentVariable("DB_PORT");
-        private static readonly string? MasterDbName = Environment.GetEnvironmentVariable("DB_DATABASE")?.Trim('"');
+        private readonly IConfiguration _configuration;
 
-        public static string GetMasterConnectionString()
+        public ConnectionHelper(IConfiguration configuration)
         {
-            if (string.IsNullOrEmpty(DbServer) || string.IsNullOrEmpty(DbUser) || string.IsNullOrEmpty(DbPassword) || string.IsNullOrEmpty(MasterDbName))
+            _configuration = configuration;
+        }
+
+        private string? GetSetting(string name)
+        {
+            // Try IConfiguration first (mapped to appsettings.json or actual environment variables)
+            var value = _configuration[name];
+            
+            // Fallback to Environment if not found or empty (though IConfiguration usually picks this up)
+            if (string.IsNullOrEmpty(value))
             {
-                throw new InvalidOperationException("One or more master database connection environment variables are not set. Please check your .env file and ensure DB_SERVER, DB_DATABASE, DB_USER, and DB_PASSWORD are all set.");
+                value = Environment.GetEnvironmentVariable(name);
             }
+
+            return value;
+        }
+
+        public string GetMasterConnectionString()
+        {
+            string? server = GetSetting("DB_SERVER");
+            string? user = GetSetting("DB_USER");
+            string? password = GetSetting("DB_PASSWORD");
+            string? portStr = GetSetting("DB_PORT");
+            string? database = GetSetting("DB_DATABASE")?.Trim('"');
+
+            if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(database))
+            {
+                throw new InvalidOperationException("One or more master database connection settings are not set. Ensure DB_SERVER, DB_DATABASE, DB_USER, and DB_PASSWORD are provided via Environment or appsettings.json.");
+            }
+
             var builder = new NpgsqlConnectionStringBuilder
             {
-                Host = DbServer,
-                Database = MasterDbName,
-                Username = DbUser,
-                Password = DbPassword,
+                Host = server,
+                Database = database,
+                Username = user,
+                Password = password,
                 SslMode = SslMode.Require
             };
 
-            if (!string.IsNullOrEmpty(DbPort) && int.TryParse(DbPort, out int port))
+            if (!string.IsNullOrEmpty(portStr) && int.TryParse(portStr, out int port))
             {
                 builder.Port = port;
             }
@@ -33,27 +56,33 @@ namespace Backend.Services
             return builder.ConnectionString;
         }
 
-        public static string GetUserDbConnectionString(string dbName)
+        public string GetUserDbConnectionString(string dbName)
         {
-            if (string.IsNullOrEmpty(DbServer) || string.IsNullOrEmpty(DbUser) || string.IsNullOrEmpty(DbPassword))
+            string? server = GetSetting("DB_SERVER");
+            string? user = GetSetting("DB_USER");
+            string? password = GetSetting("DB_PASSWORD");
+            string? portStr = GetSetting("DB_PORT");
+
+            if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password))
             {
-                throw new InvalidOperationException("One or more user database connection environment variables are not set. Please check your .env file and ensure DB_SERVER, DB_USER, and DB_PASSWORD are all set.");
+                throw new InvalidOperationException("One or more user database connection settings are not set. Ensure DB_SERVER, DB_USER, and DB_PASSWORD are provided.");
             }
             
             if (string.IsNullOrEmpty(dbName))
             {
                 throw new ArgumentException("Database name cannot be null or empty.", nameof(dbName));
             }
+
             var builder = new NpgsqlConnectionStringBuilder
             {
-                Host = DbServer,
+                Host = server,
                 Database = dbName,
-                Username = DbUser,
-                Password = DbPassword,
+                Username = user,
+                Password = password,
                 SslMode = SslMode.Require
             };
 
-            if (!string.IsNullOrEmpty(DbPort) && int.TryParse(DbPort, out int port))
+            if (!string.IsNullOrEmpty(portStr) && int.TryParse(portStr, out int port))
             {
                 builder.Port = port;
             }
@@ -61,22 +90,28 @@ namespace Backend.Services
             return builder.ConnectionString;
         }
         
-        public static string GetMasterConnectionStringWithoutInitialCatalog()
+        public string GetMasterConnectionStringWithoutInitialCatalog()
         {
-            if (string.IsNullOrEmpty(DbServer) || string.IsNullOrEmpty(DbUser) || string.IsNullOrEmpty(DbPassword))
+            string? server = GetSetting("DB_SERVER");
+            string? user = GetSetting("DB_USER");
+            string? password = GetSetting("DB_PASSWORD");
+            string? portStr = GetSetting("DB_PORT");
+
+            if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password))
             {
-                throw new InvalidOperationException("One or more master database connection environment variables are not set. Please check your .env file and ensure DB_SERVER, DB_USER, and DB_PASSWORD are all set.");
+                throw new InvalidOperationException("One or more master database connection settings are not set.");
             }
+
             var builder = new NpgsqlConnectionStringBuilder
             {
-                Host = DbServer,
-                Database = "postgres", // Default database for PG if none specified
-                Username = DbUser,
-                Password = DbPassword,
+                Host = server,
+                Database = "postgres", 
+                Username = user,
+                Password = password,
                 SslMode = SslMode.Require
             };
 
-            if (!string.IsNullOrEmpty(DbPort) && int.TryParse(DbPort, out int port))
+            if (!string.IsNullOrEmpty(portStr) && int.TryParse(portStr, out int port))
             {
                 builder.Port = port;
             }
@@ -95,7 +130,6 @@ namespace Backend.Services
             }
             catch 
             {
-                // If the connection string is malformed, we can't parse it, so we return a generic masked value.
                 return "[malformed connection string - cannot mask password]";
             }
         }

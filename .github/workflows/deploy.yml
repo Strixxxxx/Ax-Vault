@@ -25,6 +25,20 @@ jobs:
       - name: Build and Publish
         run: dotnet publish Backend/Backend.csproj -c Release -o ./publish
 
+      - name: App Settings Variable Substitution
+        uses: microsoft/variable-substitution@v1
+        with:
+          files: './publish/appsettings.json'
+        env:
+          DB_SERVER: ${{ secrets.DB_SERVER }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_DATABASE: ${{ secrets.DB_DATABASE }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
+          JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
+
       - name: Deploy to MonsterASP.net via WebDeploy
         run: |
-          msdeploy.exe -verb:sync -source:contentPath='${{ github.workspace }}\publish' -dest:contentPath='${{ secrets.WEBDEPLOY_SITE }}',ComputerName='${{ secrets.WEBDEPLOY_SERVER }}',UserName='${{ secrets.WEBDEPLOY_USERNAME }}',Password='${{ secrets.WEBDEPLOY_PASSWORD }}',AuthType='Basic' -allowUntrusted
+          "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" -verb:sync -source:contentPath="${{ github.workspace }}\publish" -dest:contentPath="${{ secrets.WEBDEPLOY_SITE }}",ComputerName="${{ secrets.WEBDEPLOY_SERVER }}",UserName="${{ secrets.WEBDEPLOY_USERNAME }}",Password="${{ secrets.WEBDEPLOY_PASSWORD }}",AuthType='Basic' -allowUntrusted

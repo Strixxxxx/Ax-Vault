@@ -26,15 +26,21 @@ namespace Backend.Controllers.Accounts
         private readonly ILogger<PlatformController> _logger;
         private readonly ApplicationDbContext _context;
         private readonly PlatformTableService _platformTableService;
+        private readonly ConnectionHelper _connectionHelper;
+        private readonly PasswordHasher _passwordHasher;
 
         public PlatformController(
             ILogger<PlatformController> logger, 
             ApplicationDbContext context,
-            PlatformTableService platformTableService)
+            PlatformTableService platformTableService,
+            ConnectionHelper connectionHelper,
+            PasswordHasher passwordHasher)
         {
             _logger = logger;
             _context = context;
             _platformTableService = platformTableService;
+            _connectionHelper = connectionHelper;
+            _passwordHasher = passwordHasher;
         }
 
         /*
@@ -67,7 +73,7 @@ namespace Backend.Controllers.Accounts
                     .Distinct() // Ensure unique platform names
                     .ToListAsync();
 
-                string connectionString = ConnectionHelper.GetMasterConnectionString();
+                string connectionString = _connectionHelper.GetMasterConnectionString();
 
                 foreach (var platformName in platformNames)
                 {
@@ -233,8 +239,8 @@ namespace Backend.Controllers.Accounts
                 return null;
             }
 
-            var fixedSalt = PasswordHasher.GetDeterministicSalt();
-            var inputHash = PasswordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
+            var fixedSalt = _passwordHasher.GetDeterministicSalt();
+            var inputHash = _passwordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
 
             _logger.LogInformation("PlatformController: Identity found: {usernameClaim}. Looking up hashed user...", usernameClaim);
 

@@ -8,12 +8,14 @@ namespace Backend.Middleware
     public class AppVerifierMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly PasswordHasher _passwordHasher;
         private readonly string? _backendSecretHash;
 
-        public AppVerifierMiddleware(RequestDelegate next)
+        public AppVerifierMiddleware(RequestDelegate next, IConfiguration configuration, PasswordHasher passwordHasher)
         {
             _next = next;
-            _backendSecretHash = Environment.GetEnvironmentVariable("BACKEND_SECRET_KEY");
+            _passwordHasher = passwordHasher;
+            _backendSecretHash = configuration["BACKEND_SECRET_KEY"] ?? Environment.GetEnvironmentVariable("BACKEND_SECRET_KEY");
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -43,7 +45,7 @@ namespace Backend.Middleware
                 return;
             }
 
-            if (!PasswordHasher.VerifyPassword(_backendSecretHash, frontendSecret!))
+            if (!_passwordHasher.VerifyPassword(_backendSecretHash, frontendSecret!))
             {
                 Console.WriteLine($"[AppVerifier] REJECTED: Secret verification failed. Provided: {frontendSecret.ToString().Substring(0, Math.Min(5, frontendSecret.ToString().Length))}...");
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;

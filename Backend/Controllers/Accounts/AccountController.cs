@@ -26,17 +26,23 @@ namespace Backend.Controllers.Accounts
         private readonly ApplicationDbContext _context;
         private readonly EncryptionService _encryptionService;
         private readonly PlatformTableService _platformTableService;
+        private readonly ConnectionHelper _connectionHelper;
+        private readonly PasswordHasher _passwordHasher;
 
         public AccountController(
             ILogger<AccountController> logger, 
             ApplicationDbContext context,
             PlatformTableService platformTableService,
-            EncryptionService encryptionService)
+            EncryptionService encryptionService,
+            ConnectionHelper connectionHelper,
+            PasswordHasher passwordHasher)
         {
             _logger = logger;
             _context = context;
             _platformTableService = platformTableService;
             _encryptionService = encryptionService;
+            _connectionHelper = connectionHelper;
+            _passwordHasher = passwordHasher;
         }
 
         private async Task<User?> GetCurrentUserAsync()
@@ -63,8 +69,8 @@ namespace Backend.Controllers.Accounts
                 return null;
             }
 
-            var fixedSalt = PasswordHasher.GetDeterministicSalt();
-            var inputHash = PasswordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
+            var fixedSalt = _passwordHasher.GetDeterministicSalt();
+            var inputHash = _passwordHasher.HashDeterministic(usernameClaim.ToLowerInvariant(), fixedSalt);
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.UsernameHashed == inputHash || u.EmailHashed == inputHash);
             if (user == null)
@@ -84,13 +90,13 @@ namespace Backend.Controllers.Accounts
                 if (user == null) return Unauthorized(new { Message = "User identity not found." });
 
                 // Derive key to decrypt usernames
-                var salt = PasswordHasher.GetDeterministicSalt();
-                var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
+                var salt = _passwordHasher.GetDeterministicSalt();
+                var vaultKey = _passwordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
 
                 string tableName = $"{user.AccountID}_{request.Platform}";
                 var accounts = new List<AccountResponseModel>();
 
-                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(_connectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
                     string query = $"SELECT \"PlatformID\", \"username\", \"password\", \"description\", \"created_at\" FROM \"{tableName}\"";
@@ -131,8 +137,8 @@ namespace Backend.Controllers.Accounts
                 var user = await GetCurrentUserAsync();
                 if (user == null) return Unauthorized(new { Message = "User identity not found." });
 
-                var salt = PasswordHasher.GetDeterministicSalt();
-                var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
+                var salt = _passwordHasher.GetDeterministicSalt();
+                var vaultKey = _passwordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
 
                 string encryptedUsername = _encryptionService.Encrypt(request.Username, vaultKey);
                 string encryptedPassword = _encryptionService.Encrypt(request.Password, vaultKey);
@@ -143,7 +149,7 @@ namespace Backend.Controllers.Accounts
                     INSERT INTO ""{tableName}"" (""username"", ""password"", ""description"", ""created_at"")
                     VALUES (@Username, @Password, @Description, CURRENT_TIMESTAMP)";
 
-                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(_connectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
                     using var command = new NpgsqlCommand(query, connection);
@@ -171,8 +177,8 @@ namespace Backend.Controllers.Accounts
                 var user = await GetCurrentUserAsync();
                 if (user == null) return Unauthorized(new { Message = "User identity not found." });
 
-                var salt = PasswordHasher.GetDeterministicSalt();
-                var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
+                var salt = _passwordHasher.GetDeterministicSalt();
+                var vaultKey = _passwordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
 
                 string encryptedUsername = _encryptionService.Encrypt(request.Username, vaultKey);
                 string encryptedPassword = _encryptionService.Encrypt(request.Password, vaultKey);
@@ -184,7 +190,7 @@ namespace Backend.Controllers.Accounts
                     SET ""username"" = @Username, ""password"" = @Password, ""description"" = @Description
                     WHERE ""PlatformID"" = @Id";
 
-                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(_connectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
                     using var command = new NpgsqlCommand(query, connection);
@@ -217,7 +223,7 @@ namespace Backend.Controllers.Accounts
                 string tableName = $"{user.AccountID}_{request.Platform}";
                 string query = $"DELETE FROM \"{tableName}\" WHERE \"PlatformID\" = @Id";
 
-                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(_connectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
                     using var command = new NpgsqlCommand(query, connection);
@@ -244,13 +250,13 @@ namespace Backend.Controllers.Accounts
                 var user = await GetCurrentUserAsync();
                 if (user == null) return Unauthorized(new { Message = "User identity not found." });
 
-                var salt = PasswordHasher.GetDeterministicSalt();
-                var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
+                var salt = _passwordHasher.GetDeterministicSalt();
+                var vaultKey = _passwordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
 
                 string tableName = $"{user.AccountID}_{request.Platform}";
                 string query = $"SELECT \"password\" FROM \"{tableName}\" WHERE \"PlatformID\" = @Id";
 
-                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(_connectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
                     using var command = new NpgsqlCommand(query, connection);
