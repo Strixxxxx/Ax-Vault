@@ -110,7 +110,11 @@ public partial class Login : ContentView
         }
         catch (Exception ex)
         {
-            StatusLabel.Text = $"Error: {ex.Message}";
+            var message = ex.InnerException != null 
+                ? $"{ex.Message} (Inner: {ex.InnerException.Message})" 
+                : ex.Message;
+            
+            StatusLabel.Text = $"Error: {message}";
             StatusLabel.IsVisible = true;
             LoginCompleted?.Invoke(this, new LoginSuccessEventArgs { Success = false });
         }

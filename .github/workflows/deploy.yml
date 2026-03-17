@@ -1,27 +1,17 @@
-name: Deploy Backend to MonsterASP.net
+name: Backend Build Verification (Render)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+    paths:
+      - 'Backend/**'
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  cleanup:
+  verify:
     runs-on: ubuntu-latest
-    steps:
-      - name: Delete old workflow runs
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api repos/${{ github.repository }}/actions/runs --paginate -q '.workflow_runs[].id' | \
-          tail -n +51 | \
-          xargs -I {} gh api repos/${{ github.repository }}/actions/runs/{} -X DELETE --silent || echo "No old runs to delete"
-
-  deploy:
-    needs: cleanup
-    runs-on: windows-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -29,29 +19,14 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x' # Updated to match standard .NET version for this project
+          dotnet-version: '10.0.x'
 
-      - name: Restore Dependencies
-        run: dotnet restore Backend/Backend.csproj
-
-      - name: Build and Publish
-        run: dotnet publish Backend/Backend.csproj -c Release -o ./publish
-
-      - name: App Settings Variable Substitution
-        uses: microsoft/variable-substitution@v1
-        with:
-          files: './publish/appsettings.json'
-        env:
-          DB_SERVER: ${{ secrets.DB_SERVER }}
-          DB_PORT: ${{ secrets.DB_PORT }}
-          DB_DATABASE: ${{ secrets.DB_DATABASE }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
-          JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
-
-      - name: Deploy to MonsterASP.NET via WebDeploy
-        shell: pwsh
+      - name: Restore & Build Check
         run: |
-          & "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" -verb:sync -source:contentPath='${{ github.workspace }}/publish' -dest:contentPath='${{ secrets.WEBDEPLOY_SITE }}',ComputerName='${{ secrets.WEBDEPLOY_SERVER }}',UserName='${{ secrets.WEBDEPLOY_USERNAME }}',Password='${{ secrets.WEBDEPLOY_PASSWORD }}',AuthType='Basic' -allowUntrusted
+          dotnet restore Backend/Backend.csproj
+          dotnet build Backend/Backend.csproj -c Release --no-restore
+
+      - name: Dockerfile Lint/Verification
+       
+        run: |
+          docker build -t backend-test ./Backend -f Backend/Dockerfile --build-arg TARGETARCH=amd64

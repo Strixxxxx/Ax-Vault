@@ -39,9 +39,12 @@ namespace Frontend.Components.ForgotPassword.Steps
                     StatusLabel.IsVisible = true;
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                StatusLabel.Text = "Could not connect to the server. Try again.";
+                var message = ex.InnerException != null 
+                    ? $"{ex.Message} (Inner: {ex.InnerException.Message})" 
+                    : ex.Message;
+                StatusLabel.Text = $"Error: {message}";
                 StatusLabel.IsVisible = true;
             }
         }

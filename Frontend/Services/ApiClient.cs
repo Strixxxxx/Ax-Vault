@@ -18,10 +18,20 @@ namespace Frontend.Services
     {
         private static readonly Lazy<HttpClient> _lazyInstance = new Lazy<HttpClient>(() =>
         {
-            var instance = new HttpClient();
+            var handler = new HttpClientHandler
+            {
+                // THIS IS FOR DEVELOPMENT/OJT ONLY - DO NOT USE IN A REAL BANKING APP
+                // This bypasses SSL certificate validation for MonsterASP.NET's free certificates
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true,
+                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                CheckCertificateRevocationList = false
+            };
 
+            var instance = new HttpClient(handler);
+            
             // Set the base address to your development machine's IP where Nginx is running
-            string apiBaseUrl = "http://192.168.100.105:5180"; // Replace with your actual IP address
+            // WORKAROUND: Changed to http because the server is resetting https connections
+            string apiBaseUrl = "http://ax-vault.runasp.net/";
             instance.BaseAddress = new Uri(apiBaseUrl);
 
             // Get the frontend secret key from the manually loaded settings
