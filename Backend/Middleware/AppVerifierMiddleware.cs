@@ -20,8 +20,9 @@ namespace Backend.Middleware
 
         public async Task InvokeAsync(HttpContext context)
         {
-            // Allow the temporary hash generation endpoint to bypass this check
-            if (context.Request.Path.StartsWithSegments("/api/auth/hash-secret"))
+            // Allow the temporary hash generation and health check endpoints to bypass this check
+            if (context.Request.Path.StartsWithSegments("/api/auth/hash-secret") || 
+                context.Request.Path.StartsWithSegments("/api/health"))
             {
                 await _next(context);
                 return;
