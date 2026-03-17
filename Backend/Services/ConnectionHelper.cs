@@ -1,5 +1,4 @@
-using System;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 
 namespace Backend.Services
 {
@@ -17,16 +16,21 @@ namespace Backend.Services
             {
                 throw new InvalidOperationException("One or more master database connection environment variables are not set. Please check your .env file and ensure DB_SERVER, DB_DATABASE, DB_USER, and DB_PASSWORD are all set.");
             }
-
-            return new SqlConnectionStringBuilder
+            var builder = new NpgsqlConnectionStringBuilder
             {
-                DataSource = $"{DbServer}{(string.IsNullOrEmpty(DbPort) ? "" : $",{DbPort}")}",
-                InitialCatalog = MasterDbName,
-                UserID = DbUser,
+                Host = DbServer,
+                Database = MasterDbName,
+                Username = DbUser,
                 Password = DbPassword,
-                MultipleActiveResultSets = true,
-                TrustServerCertificate = true
-            }.ConnectionString;
+                SslMode = SslMode.Require
+            };
+
+            if (!string.IsNullOrEmpty(DbPort) && int.TryParse(DbPort, out int port))
+            {
+                builder.Port = port;
+            }
+
+            return builder.ConnectionString;
         }
 
         public static string GetUserDbConnectionString(string dbName)
@@ -40,16 +44,21 @@ namespace Backend.Services
             {
                 throw new ArgumentException("Database name cannot be null or empty.", nameof(dbName));
             }
-
-            return new SqlConnectionStringBuilder
+            var builder = new NpgsqlConnectionStringBuilder
             {
-                DataSource = $"{DbServer}{(string.IsNullOrEmpty(DbPort) ? "" : $",{DbPort}")}",
-                InitialCatalog = dbName,
-                UserID = DbUser,
+                Host = DbServer,
+                Database = dbName,
+                Username = DbUser,
                 Password = DbPassword,
-                MultipleActiveResultSets = true,
-                TrustServerCertificate = true
-            }.ConnectionString;
+                SslMode = SslMode.Require
+            };
+
+            if (!string.IsNullOrEmpty(DbPort) && int.TryParse(DbPort, out int port))
+            {
+                builder.Port = port;
+            }
+
+            return builder.ConnectionString;
         }
         
         public static string GetMasterConnectionStringWithoutInitialCatalog()
@@ -58,15 +67,21 @@ namespace Backend.Services
             {
                 throw new InvalidOperationException("One or more master database connection environment variables are not set. Please check your .env file and ensure DB_SERVER, DB_USER, and DB_PASSWORD are all set.");
             }
-            
-            return new SqlConnectionStringBuilder
+            var builder = new NpgsqlConnectionStringBuilder
             {
-                DataSource = $"{DbServer}{(string.IsNullOrEmpty(DbPort) ? "" : $",{DbPort}")}",
-                UserID = DbUser,
+                Host = DbServer,
+                Database = "postgres", // Default database for PG if none specified
+                Username = DbUser,
                 Password = DbPassword,
-                MultipleActiveResultSets = true,
-                TrustServerCertificate = true
-            }.ConnectionString;
+                SslMode = SslMode.Require
+            };
+
+            if (!string.IsNullOrEmpty(DbPort) && int.TryParse(DbPort, out int port))
+            {
+                builder.Port = port;
+            }
+
+            return builder.ConnectionString;
         }
 
         public static string MaskConnectionString(string connectionString)
@@ -75,7 +90,7 @@ namespace Backend.Services
             
             try 
             {
-                var builder = new SqlConnectionStringBuilder(connectionString) { Password = "******" };
+                var builder = new NpgsqlConnectionStringBuilder(connectionString) { Password = "******" };
                 return builder.ConnectionString;
             }
             catch 

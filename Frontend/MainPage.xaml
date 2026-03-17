@@ -1,9 +1,10 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:login="clr-namespace:Frontend.Components.Login"
              xmlns:layout="clr-namespace:Frontend.Components.Layout"
              xmlns:register="clr-namespace:Frontend.Components.Register"
+             xmlns:fp="clr-namespace:Frontend.Components.ForgotPassword"
              x:Class="Frontend.MainPage"
              BackgroundColor="#1a1a1a"
              NavigationPage.HasNavigationBar="False">
@@ -13,6 +14,7 @@
         <Grid Grid.Row="0">
             <login:LoginView x:Name="LoginView" IsVisible="True" />
             <register:Register x:Name="RegisterComponent" IsVisible="False" VerticalOptions="Center" HorizontalOptions="Center" />
+            <fp:ForgotPasswordComponent x:Name="ForgotPasswordComponent" IsVisible="False" VerticalOptions="Center" HorizontalOptions="Center" />
             <layout:MainLayout x:Name="MainLayoutComponent" IsVisible="False" />
         </Grid>
         

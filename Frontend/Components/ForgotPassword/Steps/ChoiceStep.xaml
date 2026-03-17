@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.ForgotPassword.Steps.ChoiceStep">
+
+    <ScrollView VerticalOptions="Center">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+              Padding="20,10" RowSpacing="15" WidthRequest="320"
+              VerticalOptions="Center" HorizontalOptions="Center">
+
+            <Label Grid.Row="0" Text="Choose Recovery Method"
+                   FontSize="22" FontAttributes="Bold"
+                   TextColor="White" HorizontalOptions="Center"
+                   Margin="0,20,0,0"/>
+
+            <Label Grid.Row="1"
+                   Text="How would you like to verify your identity?"
+                   FontSize="14" TextColor="#aaaaaa"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+
+            <!-- OTP Option -->
+            <Border Grid.Row="2" BackgroundColor="#1e1e1e" StrokeThickness="1" Stroke="#00e5ff"
+                    Padding="16" StrokeShape="RoundRectangle 8">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnOtpSelected"/>
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="📧  Send OTP to Email"
+                           FontSize="16" FontAttributes="Bold" TextColor="White"/>
+                    <Label Text="We'll email a 6-digit code to your registered address."
+                           FontSize="12" TextColor="#888888"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Vault Password Option -->
+            <Border Grid.Row="3" BackgroundColor="#1e1e1e" StrokeThickness="1" Stroke="#00e5ff"
+                    Padding="16" StrokeShape="RoundRectangle 8">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnVaultSelected"/>
+                </Border.GestureRecognizers>
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="🔐  Use Vault Password"
+                           FontSize="16" FontAttributes="Bold" TextColor="White"/>
+                    <Label Text="Verify identity using your secret vault password."
+                           FontSize="12" TextColor="#888888"/>
+                </VerticalStackLayout>
+            </Border>
+
+            <ActivityIndicator Grid.Row="4" x:Name="LoadingIndicator"
+                               IsRunning="False" IsVisible="False"
+                               Color="#00e5ff" HorizontalOptions="Center"/>
+
+            <Label Grid.Row="5" HorizontalOptions="Center" Margin="0,5,0,0">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="← " TextColor="Gray"/>
+                        <Span Text="Back" TextColor="#00e5ff" TextDecorations="Underline">
+                            <Span.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnBackTapped"/>
+                            </Span.GestureRecognizers>
+                        </Span>
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+        </Grid>
+    </ScrollView>
+</ContentView>

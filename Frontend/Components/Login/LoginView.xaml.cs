@@ -8,6 +8,7 @@ namespace Frontend.Components.Login
     {
         public event EventHandler<Login.LoginSuccessEventArgs>? LoginSuccessful;
         public event EventHandler? RegisterRequested;
+        public event EventHandler? ForgotPasswordRequested;
 
         public LoginView()
         {
@@ -15,6 +16,7 @@ namespace Frontend.Components.Login
             this.Loaded += OnLoginViewLoaded;
             LoginComponent.LoginCompleted += (s, args) => LoginSuccessful?.Invoke(s, args);
             LoginComponent.RegisterRequested += (s, e) => RegisterRequested?.Invoke(this, EventArgs.Empty);
+            LoginComponent.ForgotPasswordRequested += (s, e) => ForgotPasswordRequested?.Invoke(this, EventArgs.Empty);
         }
 
         public void ResetForm()

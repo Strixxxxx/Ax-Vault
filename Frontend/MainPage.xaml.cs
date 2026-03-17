@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Dispatching;
 using Frontend.Components.Dashboard;
@@ -8,7 +8,8 @@ using System.Net.Http.Headers;
 using Frontend.Services;
 
 using Frontend.Components.Register;
-using Frontend.Components.Login; // Add this namespace
+using Frontend.Components.Login;
+using Frontend.Components.ForgotPassword;
 
 namespace Frontend;
 
@@ -23,13 +24,17 @@ public partial class MainPage : ContentPage
 		// Subscribe to login view events
 		LoginView.LoginSuccessful += OnLoginCompleted;
 		LoginView.RegisterRequested += OnRegisterRequested;
-	       
-	       // Subscribe to register component events
-	       RegisterComponent.LoginRequested += OnLoginRequestedFromRegister;
-	       RegisterComponent.RegistrationCompleted += OnRegistrationCompleted;
+		LoginView.ForgotPasswordRequested += OnForgotPasswordRequested;
 
-	       // Subscribe to main layout logout event
-	       MainLayoutComponent.LogoutRequested += OnLogoutRequested;
+		// Subscribe to register component events
+		RegisterComponent.LoginRequested += OnLoginRequestedFromRegister;
+		RegisterComponent.RegistrationCompleted += OnRegistrationCompleted;
+
+		// Subscribe to main layout logout event
+		MainLayoutComponent.LogoutRequested += OnLogoutRequested;
+
+		// Subscribe to forgot password back-to-login event
+		ForgotPasswordComponent.BackToLoginRequested += OnBackToLoginFromForgotPassword;
 	}
 
 	   protected override async void OnAppearing()
@@ -62,6 +67,20 @@ public partial class MainPage : ContentPage
 	    RegisterComponent.ResetForm(); // Reset form state
 	    LoginView.IsVisible = true;
 	    LoginView.ResetForm();
+	}
+
+	private void OnForgotPasswordRequested(object? sender, EventArgs e)
+	{
+		LoginView.IsVisible = false;
+		ForgotPasswordComponent.Reset();
+		ForgotPasswordComponent.IsVisible = true;
+	}
+
+	private void OnBackToLoginFromForgotPassword(object? sender, EventArgs e)
+	{
+		ForgotPasswordComponent.IsVisible = false;
+		LoginView.ResetForm();
+		LoginView.IsVisible = true;
 	}
 
 	private void OnRegistrationCompleted(object? sender, bool success)

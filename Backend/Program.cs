@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using System;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.OpenApi.Models;
 using Backend.Data;
@@ -98,9 +98,9 @@ try
     // Use ConnectionHelper to get the master connection string
     connectionString = ConnectionHelper.GetMasterConnectionString();
     
-    // Configure Entity Framework with SQL Server
+    // Configure Entity Framework with PostgreSQL
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlServer(connectionString));
+        options.UseNpgsql(connectionString));
 }
 catch (InvalidOperationException ex)
 {
@@ -115,6 +115,7 @@ catch (InvalidOperationException ex)
 // Register services
 builder.Services.AddScoped<Backend.Services.PlatformTableService>();
 builder.Services.AddSingleton<EncryptionService>();
+builder.Services.AddScoped<EmailService>();
 
 // Add CORS services
 builder.Services.AddCors(options =>
@@ -175,7 +176,7 @@ try
     logger.LogInformation("Attempting to connect to the master database...");
     var maskedConnectionString = ConnectionHelper.MaskConnectionString(connectionString);
 
-    using var connection = new SqlConnection(connectionString);
+    using var connection = new NpgsqlConnection(connectionString);
     await connection.OpenAsync();
     logger.LogInformation("✅ Successfully connected to the master database!");
     connection.Close();

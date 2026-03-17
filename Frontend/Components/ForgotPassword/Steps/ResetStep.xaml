@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.ForgotPassword.Steps.ResetStep">
+
+    <ScrollView VerticalOptions="Center">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              Padding="20,10" RowSpacing="12" WidthRequest="320"
+              VerticalOptions="Center">
+
+            <Label Grid.Row="0" Text="Create New Password"
+                   FontSize="24" FontAttributes="Bold"
+                   TextColor="White" HorizontalOptions="Center"
+                   Margin="0,20,0,0"/>
+
+            <Label Grid.Row="1" Text="Password must be 9–16 characters with uppercase, lowercase, number &amp; special character."
+                   FontSize="12" TextColor="#888888"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+
+            <!-- New Password -->
+            <Grid Grid.Row="2" Margin="0,5,0,0">
+                <Entry x:Name="NewPasswordEntry"
+                       Placeholder="New Password" PlaceholderColor="#7f7f7f"
+                       BackgroundColor="#2a2a2a" TextColor="White"
+                       IsPassword="True" TextChanged="OnPasswordChanged"/>
+                <Label x:Name="ToggleNew" Text="&#xe8f4;"
+                       TextColor="#00e5ff" FontSize="22"
+                       HorizontalOptions="End" VerticalOptions="Center"
+                       Margin="0,0,14,0">
+                    <Label.FontFamily><OnPlatform x:TypeArguments="x:String">
+                        <On Platform="WinUI" Value="MaterialIcons"/>
+                        <On Platform="Android" Value="MaterialIcons-Regular.ttf#MaterialIcons"/>
+                        <On Platform="iOS" Value="MaterialIcons"/>
+                    </OnPlatform></Label.FontFamily>
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnToggleNew"/>
+                    </Label.GestureRecognizers>
+                </Label>
+            </Grid>
+
+            <!-- Confirm Password -->
+            <Grid Grid.Row="3" Margin="0,0,0,0">
+                <Entry x:Name="ConfirmPasswordEntry"
+                       Placeholder="Confirm Password" PlaceholderColor="#7f7f7f"
+                       BackgroundColor="#2a2a2a" TextColor="White"
+                       IsPassword="True"/>
+                <Label x:Name="ToggleConfirm" Text="&#xe8f4;"
+                       TextColor="#00e5ff" FontSize="22"
+                       HorizontalOptions="End" VerticalOptions="Center"
+                       Margin="0,0,14,0">
+                    <Label.FontFamily><OnPlatform x:TypeArguments="x:String">
+                        <On Platform="WinUI" Value="MaterialIcons"/>
+                        <On Platform="Android" Value="MaterialIcons-Regular.ttf#MaterialIcons"/>
+                        <On Platform="iOS" Value="MaterialIcons"/>
+                    </OnPlatform></Label.FontFamily>
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnToggleConfirm"/>
+                    </Label.GestureRecognizers>
+                </Label>
+            </Grid>
+
+            <!-- Requirements checklist -->
+            <VerticalStackLayout Grid.Row="4" Spacing="2" Margin="4,0,0,0">
+                <Label x:Name="ReqLength"    Text="● 9–16 characters" FontSize="12" TextColor="#888888"/>
+                <Label x:Name="ReqUpper"     Text="● Uppercase letter" FontSize="12" TextColor="#888888"/>
+                <Label x:Name="ReqLower"     Text="● Lowercase letter" FontSize="12" TextColor="#888888"/>
+                <Label x:Name="ReqNumber"    Text="● Number"           FontSize="12" TextColor="#888888"/>
+                <Label x:Name="ReqSpecial"   Text="● Special character" FontSize="12" TextColor="#888888"/>
+            </VerticalStackLayout>
+
+            <Label Grid.Row="5" x:Name="StatusLabel"
+                   TextColor="#ff5555" IsVisible="False"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"
+                   FontSize="13"/>
+
+            <Button Grid.Row="6" Text="Reset Password"
+                    Clicked="OnResetClicked"
+                    BackgroundColor="#00e5ff" TextColor="Black"
+                    HeightRequest="46" CornerRadius="4" Margin="0,5,0,0"/>
+
+            <Label Grid.Row="7" HorizontalOptions="Center" Margin="0,5,0,0">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="← " TextColor="Gray"/>
+                        <Span Text="Back" TextColor="#00e5ff" TextDecorations="Underline">
+                            <Span.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnBackTapped"/>
+                            </Span.GestureRecognizers>
+                        </Span>
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+        </Grid>
+    </ScrollView>
+</ContentView>

@@ -44,13 +44,12 @@ namespace Frontend.Components.Modals
 
         private async void OnModalLoaded(object? sender, EventArgs e)
         {
+            Loaded -= OnModalLoaded;
             await LoadAccounts();
         }
 
         public async Task LoadAccounts()
         {
-            Accounts.Clear();
-
             string? vaultPassword = SessionService.Instance.VaultPassword;
 
             if (string.IsNullOrEmpty(vaultPassword))
@@ -72,6 +71,7 @@ namespace Frontend.Components.Modals
                     var accounts = await response.Content.ReadFromJsonAsync<List<AccountResponseModel>>();
                     if (accounts != null && accounts.Any())
                     {
+                        Accounts.Clear(); // Clear just before adding to prevent duplicates from concurrent calls
                         foreach (var account in accounts)
                         {
                             var convertedCreatedAt = ConvertUtcToLocalTime(account.CreatedAt, account.TimeZoneId);

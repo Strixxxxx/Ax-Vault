@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Backend.Data;
 
 namespace Backend.Services;
@@ -24,33 +24,28 @@ public class PlatformTableService
         // But keep it consistent with what the user expects: [AccountID]_[Platform]
         string tableName = $"{accountId}_{platform}";
         
-        // Use brackets to handle spaces or special characters in table name
-        string safeTableName = $"[{tableName}]";
+        // Use double quotes to handle spaces or special characters in table name for PG
+        string safeTableName = $"\"{tableName}\"";
 
         _logger.LogInformation("Creating platform table. AccountID: {accountId}, Platform: {platform}, TableName: {tableName}", accountId, platform, tableName);
 
-        // FIX: Ensure the check in INFORMATION_SCHEMA is against the actual table name (unbracketed)
         string createTableSql = $@"
-            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @tableName)
-            BEGIN
-                CREATE TABLE {safeTableName} (
-                    PlatformID BIGINT PRIMARY KEY IDENTITY(1,1),
-                    username NVARCHAR(MAX) NOT NULL, -- Encrypted
-                    password NVARCHAR(MAX) NOT NULL, -- Encrypted
-                    description NVARCHAR(MAX),
-                    created_at DATETIME2 DEFAULT GETUTCDATE()
-                );
-            END";
+            CREATE TABLE IF NOT EXISTS {safeTableName} (
+                ""PlatformID"" BIGSERIAL PRIMARY KEY,
+                ""username"" TEXT NOT NULL, -- Encrypted
+                ""password"" TEXT NOT NULL, -- Encrypted
+                ""description"" TEXT,
+                ""created_at"" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );";
 
         try
         {
-            using (var connection = new SqlConnection(_connectionString))
+            using (var connection = new NpgsqlConnection(_connectionString))
             {
                 await connection.OpenAsync();
-                using (var command = new SqlCommand(createTableSql, connection))
+                using (var command = new NpgsqlCommand(createTableSql, connection))
                 {
-                    command.Parameters.AddWithValue("@tableName", tableName);
-                    _logger.LogInformation("Executing SQL for table creation: {sql}", createTableSql.Replace("@tableName", $"'{tableName}'"));
+                    _logger.LogInformation("Executing SQL for table creation: {sql}", createTableSql);
                     await command.ExecuteNonQueryAsync();
                 }
             }
@@ -68,15 +63,15 @@ public class PlatformTableService
         string oldTableName = $"{accountId}_{oldPlatform}";
         string newTableName = $"{accountId}_{newPlatform}";
 
-        _logger.LogInformation($"Renaming table '[{oldTableName}]' to '[{newTableName}]'.");
+        _logger.LogInformation($"Renaming table '\"{oldTableName}\"' to '\"{newTableName}\"'.");
 
-        // SQL Server rename syntax: EXEC sp_rename 'old_name', 'new_name'
-        string renameSql = $"EXEC sp_rename '[{oldTableName}]', '{newTableName}'";
+        // PostgreSQL rename syntax
+        string renameSql = $"ALTER TABLE \"{oldTableName}\" RENAME TO \"{newTableName}\"";
 
-        using (var connection = new SqlConnection(_connectionString))
+        using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
-            using (var command = new SqlCommand(renameSql, connection))
+            using (var command = new NpgsqlCommand(renameSql, connection))
             {
                 await command.ExecuteNonQueryAsync();
             }
@@ -86,14 +81,14 @@ public class PlatformTableService
     public async Task DropPlatformTableAsync(long accountId, string platform)
     {
         string tableName = $"{accountId}_{platform}";
-        _logger.LogInformation($"Dropping table '[{tableName}]'.");
+        _logger.LogInformation($"Dropping table '\"{tableName}\"'.");
 
-        string dropSql = $"DROP TABLE [{tableName}]";
+        string dropSql = $"DROP TABLE IF EXISTS \"{tableName}\"";
 
-        using (var connection = new SqlConnection(_connectionString))
+        using (var connection = new NpgsqlConnection(_connectionString))
         {
             await connection.OpenAsync();
-            using (var command = new SqlCommand(dropSql, connection))
+            using (var command = new NpgsqlCommand(dropSql, connection))
             {
                 await command.ExecuteNonQueryAsync();
             }

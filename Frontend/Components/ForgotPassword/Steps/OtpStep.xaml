@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.ForgotPassword.Steps.OtpStep">
+
+    <ScrollView VerticalOptions="Center">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+              Padding="20,10" RowSpacing="13" WidthRequest="320"
+              VerticalOptions="Center" HorizontalOptions="Center">
+
+            <Label Grid.Row="0" Text="Enter OTP"
+                   FontSize="26" FontAttributes="Bold"
+                   TextColor="White" HorizontalOptions="Center"
+                   Margin="0,20,0,0"/>
+
+            <Label Grid.Row="1" x:Name="InfoLabel"
+                   Text="Enter the 6-digit code sent to your email."
+                   FontSize="14" TextColor="#aaaaaa"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+
+            <Entry Grid.Row="2" x:Name="OtpEntry"
+                   Placeholder="_ _ _ _ _ _" PlaceholderColor="#7f7f7f"
+                   BackgroundColor="#2a2a2a" TextColor="White"
+                   MaxLength="6" Keyboard="Numeric"
+                   HorizontalTextAlignment="Center"
+                   FontSize="24" FontAttributes="Bold"
+                   Margin="0,5,0,0"/>
+
+            <Label Grid.Row="3" x:Name="StatusLabel"
+                   TextColor="#ff5555" IsVisible="False"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"
+                   FontSize="13"/>
+
+            <Button Grid.Row="4" Text="Verify OTP"
+                    Clicked="OnVerifyClicked"
+                    BackgroundColor="#00e5ff" TextColor="Black"
+                    HeightRequest="46" CornerRadius="4" Margin="0,5,0,0"/>
+
+            <Label Grid.Row="5" HorizontalOptions="Center">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="Didn't receive it? " TextColor="Gray" FontSize="13"/>
+                        <Span x:Name="ResendSpan" Text="Resend OTP" TextColor="#00e5ff"
+                              FontSize="13" TextDecorations="Underline">
+                            <Span.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnResendTapped"/>
+                            </Span.GestureRecognizers>
+                        </Span>
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+
+            <Label Grid.Row="6" HorizontalOptions="Center" Margin="0,2,0,0">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="← " TextColor="Gray"/>
+                        <Span Text="Back" TextColor="#00e5ff" TextDecorations="Underline">
+                            <Span.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnBackTapped"/>
+                            </Span.GestureRecognizers>
+                        </Span>
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+        </Grid>
+    </ScrollView>
+</ContentView>

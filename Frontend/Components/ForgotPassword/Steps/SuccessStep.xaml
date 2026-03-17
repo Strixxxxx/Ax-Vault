@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.ForgotPassword.Steps.SuccessStep">
+
+    <ScrollView VerticalOptions="Center">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto"
+              Padding="20,10" RowSpacing="20" WidthRequest="320"
+              VerticalOptions="Center" HorizontalOptions="Center">
+
+            <Label Grid.Row="0" Text="✅" FontSize="64"
+                   HorizontalOptions="Center" Margin="0,40,0,0"/>
+
+            <Label Grid.Row="1" Text="Password Changed!"
+                   FontSize="26" FontAttributes="Bold"
+                   TextColor="#00e5ff" HorizontalOptions="Center"/>
+
+            <Label Grid.Row="2"
+                   Text="Your password has been successfully reset. You will be redirected to the login page shortly."
+                   FontSize="14" TextColor="#aaaaaa"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+
+            <Label Grid.Row="3" x:Name="CountdownLabel"
+                   Text="Redirecting in 5 seconds..."
+                   FontSize="13" TextColor="#555555"
+                   HorizontalOptions="Center"/>
+        </Grid>
+    </ScrollView>
+</ContentView>

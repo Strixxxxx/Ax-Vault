@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Frontend.Components.ForgotPassword.Steps.VaultStep">
+
+    <ScrollView VerticalOptions="Center">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
+              Padding="20,10" RowSpacing="15" WidthRequest="320"
+              VerticalOptions="Center" HorizontalOptions="Center">
+            
+            <Label Grid.Row="0" Text="Vault Password"
+                   FontSize="26" FontAttributes="Bold"
+                   TextColor="White" HorizontalOptions="Center"
+                   Margin="0,20,0,0"/>
+
+            <Label Grid.Row="1"
+                   Text="Enter your Vault Password to verify your identity."
+                   FontSize="14" TextColor="#aaaaaa"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+
+            <Grid Grid.Row="2" Margin="0,5,0,0">
+                <Entry x:Name="VaultPasswordEntry"
+                       Placeholder="Vault Password" PlaceholderColor="#7f7f7f"
+                       BackgroundColor="#2a2a2a" TextColor="White"
+                       IsPassword="True"/>
+                <Label x:Name="ToggleLabel" Text="&#xe8f4;"
+                       TextColor="#00e5ff" FontSize="22"
+                       HorizontalOptions="End" VerticalOptions="Center"
+                       Margin="0,0,14,0">
+                    <Label.FontFamily>
+                        <OnPlatform x:TypeArguments="x:String">
+                            <On Platform="WinUI" Value="MaterialIcons"/>
+                            <On Platform="Android" Value="MaterialIcons-Regular.ttf#MaterialIcons"/>
+                            <On Platform="iOS" Value="MaterialIcons"/>
+                        </OnPlatform>
+                    </Label.FontFamily>
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnTogglePassword"/>
+                    </Label.GestureRecognizers>
+                </Label>
+            </Grid>
+
+            <Label Grid.Row="3" x:Name="StatusLabel"
+                   TextColor="#ff5555" IsVisible="False"
+                   HorizontalOptions="Center" HorizontalTextAlignment="Center"
+                   FontSize="13"/>
+
+            <Button Grid.Row="4" Text="Verify"
+                    Clicked="OnVerifyClicked"
+                    BackgroundColor="#00e5ff" TextColor="Black"
+                    HeightRequest="46" CornerRadius="4" Margin="0,5,0,0"/>
+
+            <Label Grid.Row="5" HorizontalOptions="Center" Margin="0,5,0,0">
+                <Label.FormattedText>
+                    <FormattedString>
+                        <Span Text="← " TextColor="Gray"/>
+                        <Span Text="Back" TextColor="#00e5ff" TextDecorations="Underline">
+                            <Span.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnBackTapped"/>
+                            </Span.GestureRecognizers>
+                        </Span>
+                    </FormattedString>
+                </Label.FormattedText>
+            </Label>
+        </Grid>
+    </ScrollView>
+</ContentView>

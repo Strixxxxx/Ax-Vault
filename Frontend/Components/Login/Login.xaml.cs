@@ -15,6 +15,7 @@ public partial class Login : ContentView
 
     public event EventHandler<LoginSuccessEventArgs>? LoginCompleted;
     public event EventHandler? RegisterRequested;
+    public event EventHandler? ForgotPasswordRequested;
 
     public Login()
     {
@@ -122,8 +123,12 @@ public partial class Login : ContentView
 
     private void OnRegisterTapped(object? sender, EventArgs e)
     {
-        // Trigger event to notify parent that user wants to register
         RegisterRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnForgotPasswordTapped(object? sender, EventArgs e)
+    {
+        ForgotPasswordRequested?.Invoke(this, EventArgs.Empty);
     }
 
     // Simple class to receive token response

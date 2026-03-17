@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Data;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -256,13 +256,19 @@ namespace Backend.Controllers.Accounts
         {
             try
             {
-                using var connection = new SqlConnection(connectionString);
+                using var connection = new NpgsqlConnection(connectionString);
                 await connection.OpenAsync();
                 
-                // Safety check: verify table exists before counting
-                string checkQuery = $"IF OBJECT_ID(N'[{tableName}]', N'U') IS NOT NULL SELECT COUNT(*) FROM [{tableName}] ELSE SELECT 0";
+                // PostgreSQL: check information_schema for table existence
+                string checkQuery = $@"
+                    SELECT COUNT(*) 
+                    FROM ""{tableName}""
+                    WHERE EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = '{tableName}'
+                    )";
                 
-                using var command = new SqlCommand(checkQuery, connection);
+                using var command = new NpgsqlCommand(checkQuery, connection);
                 return Convert.ToInt32(await command.ExecuteScalarAsync());
             }
             catch (Exception ex)

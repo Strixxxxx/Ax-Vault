@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.Extensions.Configuration;
 using System.Threading.Tasks;
 using Backend.Services;
@@ -90,12 +90,12 @@ namespace Backend.Controllers.Accounts
                 string tableName = $"{user.AccountID}_{request.Platform}";
                 var accounts = new List<AccountResponseModel>();
 
-                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
-                    string query = $"SELECT PlatformID, username, password, description, created_at FROM [{tableName}]";
+                    string query = $"SELECT \"PlatformID\", \"username\", \"password\", \"description\", \"created_at\" FROM \"{tableName}\"";
                     
-                    using var command = new SqlCommand(query, connection);
+                    using var command = new NpgsqlCommand(query, connection);
                     using var reader = await command.ExecuteReaderAsync();
                     while (await reader.ReadAsync())
                     {
@@ -140,13 +140,13 @@ namespace Backend.Controllers.Accounts
                 string tableName = $"{user.AccountID}_{request.Platform}";
                 
                 string query = $@"
-                    INSERT INTO [{tableName}] (username, password, description, created_at)
-                    VALUES (@Username, @Password, @Description, GETUTCDATE())";
+                    INSERT INTO ""{tableName}"" (""username"", ""password"", ""description"", ""created_at"")
+                    VALUES (@Username, @Password, @Description, CURRENT_TIMESTAMP)";
 
-                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
-                    using var command = new SqlCommand(query, connection);
+                    using var command = new NpgsqlCommand(query, connection);
                     command.Parameters.AddWithValue("@Username", encryptedUsername);
                     command.Parameters.AddWithValue("@Password", encryptedPassword);
                     command.Parameters.AddWithValue("@Description", (object?)request.Description ?? DBNull.Value);
@@ -180,14 +180,14 @@ namespace Backend.Controllers.Accounts
                 string tableName = $"{user.AccountID}_{request.Platform}";
                 
                 string query = $@"
-                    UPDATE [{tableName}] 
-                    SET username = @Username, password = @Password, description = @Description
-                    WHERE PlatformID = @Id";
+                    UPDATE ""{tableName}"" 
+                    SET ""username"" = @Username, ""password"" = @Password, ""description"" = @Description
+                    WHERE ""PlatformID"" = @Id";
 
-                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
-                    using var command = new SqlCommand(query, connection);
+                    using var command = new NpgsqlCommand(query, connection);
                     command.Parameters.AddWithValue("@Id", request.Id);
                     command.Parameters.AddWithValue("@Username", encryptedUsername);
                     command.Parameters.AddWithValue("@Password", encryptedPassword);
@@ -215,12 +215,12 @@ namespace Backend.Controllers.Accounts
                 if (user == null) return Unauthorized(new { Message = "User identity not found." });
 
                 string tableName = $"{user.AccountID}_{request.Platform}";
-                string query = $"DELETE FROM [{tableName}] WHERE PlatformID = @Id";
+                string query = $"DELETE FROM \"{tableName}\" WHERE \"PlatformID\" = @Id";
 
-                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
-                    using var command = new SqlCommand(query, connection);
+                    using var command = new NpgsqlCommand(query, connection);
                     command.Parameters.AddWithValue("@Id", request.Id);
 
                     int affected = await command.ExecuteNonQueryAsync();
@@ -248,12 +248,12 @@ namespace Backend.Controllers.Accounts
                 var vaultKey = PasswordHasher.DeriveKeyFromVaultPassword(request.VaultPassword, salt);
 
                 string tableName = $"{user.AccountID}_{request.Platform}";
-                string query = $"SELECT password FROM [{tableName}] WHERE PlatformID = @Id";
+                string query = $"SELECT \"password\" FROM \"{tableName}\" WHERE \"PlatformID\" = @Id";
 
-                using (var connection = new SqlConnection(ConnectionHelper.GetMasterConnectionString()))
+                using (var connection = new NpgsqlConnection(ConnectionHelper.GetMasterConnectionString()))
                 {
                     await connection.OpenAsync();
-                    using var command = new SqlCommand(query, connection);
+                    using var command = new NpgsqlCommand(query, connection);
                     command.Parameters.AddWithValue("@Id", request.Id);
 
                     var encryptedPassword = await command.ExecuteScalarAsync() as string;

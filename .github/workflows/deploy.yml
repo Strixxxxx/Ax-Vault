@@ -1,0 +1,30 @@
+name: Deploy Backend to MonsterASP.net
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x' # Updated to match standard .NET version for this project
+
+      - name: Restore Dependencies
+        run: dotnet restore Backend/Backend.csproj
+
+      - name: Build and Publish
+        run: dotnet publish Backend/Backend.csproj -c Release -o ./publish
+
+      - name: Deploy to MonsterASP.net via WebDeploy
+        run: |
+          msdeploy.exe -verb:sync -source:contentPath='${{ github.workspace }}\publish' -dest:contentPath='${{ secrets.WEBDEPLOY_SITE }}',ComputerName='${{ secrets.WEBDEPLOY_SERVER }}',UserName='${{ secrets.WEBDEPLOY_USERNAME }}',Password='${{ secrets.WEBDEPLOY_PASSWORD }}',AuthType='Basic' -allowUntrusted

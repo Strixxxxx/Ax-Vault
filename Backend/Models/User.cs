@@ -52,5 +52,12 @@ namespace Backend.Models
 
         [Column("last_login_at")]
         public DateTime? LastLoginAt { get; set; }
+
+        [Column("otp_code")]
+        [StringLength(6)]
+        public string? OtpCode { get; set; }
+
+        [Column("otp_expiry")]
+        public DateTime? OtpExpiry { get; set; }
     }
 }
