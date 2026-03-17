@@ -39,6 +39,11 @@ jobs:
           JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
           JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
 
-      - name: Deploy to MonsterASP.net via WebDeploy
+      - name: Deploy to MonsterASP.NET via WebDeploy
+        shell: pwsh
         run: |
-          "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" -verb:sync -source:contentPath="${{ github.workspace }}\publish" -dest:contentPath="${{ secrets.WEBDEPLOY_SITE }}",ComputerName="${{ secrets.WEBDEPLOY_SERVER }}",UserName="${{ secrets.WEBDEPLOY_USERNAME }}",Password="${{ secrets.WEBDEPLOY_PASSWORD }}",AuthType='Basic' -allowUntrusted
+          & "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe" `
+          -verb:sync `
+          -source:contentPath="${{ github.workspace }}\publish" `
+          -dest:contentPath="${{ secrets.WEBDEPLOY_SITE }}",ComputerName="${{ secrets.WEBDEPLOY_SERVER }}",UserName="${{ secrets.WEBDEPLOY_USERNAME }}",Password="${{ secrets.WEBDEPLOY_PASSWORD }}",AuthType='Basic' `
+          -allowUntrusted
