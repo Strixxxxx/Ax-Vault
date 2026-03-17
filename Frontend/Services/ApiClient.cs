@@ -18,32 +18,44 @@ namespace Frontend.Services
     {
         private static readonly Lazy<HttpClient> _lazyInstance = new Lazy<HttpClient>(() =>
         {
-            var handler = new HttpClientHandler
-            {
-                // THIS IS FOR DEVELOPMENT/OJT ONLY - DO NOT USE IN A REAL BANKING APP
-                // This bypasses SSL certificate validation for MonsterASP.NET's free certificates
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true,
-                SslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
-                CheckCertificateRevocationList = false
-            };
+            var instance = new HttpClient();
 
-            var instance = new HttpClient(handler);
-            
-            // Set the base address to your development machine's IP where Nginx is running
-            // WORKAROUND: Changed to http because the server is resetting https connections
-            string apiBaseUrl = "http://ax-vault.runasp.net/";
+            // Dual-Mode Connectivity: Try local first, then fall back to Render
+            string localUrl = "http://192.168.100.105:5180/";
+            string renderUrl = "https://ax-vault.onrender.com/";
+            string apiBaseUrl = renderUrl; // Default to Render
+
+            try
+            {
+                // Quick health check to see if local backend is active
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(2));
+                using var checkClient = new HttpClient { BaseAddress = new Uri(localUrl), Timeout = TimeSpan.FromSeconds(2) };
+                
+                // We just need a response, even a 404 is fine as long as the server is "there"
+                var responseTask = checkClient.GetAsync("/", cts.Token);
+                responseTask.Wait(cts.Token);
+                
+                if (responseTask.IsCompletedSuccessfully)
+                {
+                    apiBaseUrl = localUrl;
+                    Console.WriteLine("🚀 Connected to LOCAL backend (192.168.100.105)");
+                }
+            }
+            catch
+            {
+                Console.WriteLine("☁️ Local backend not found. Falling back to RENDER.");
+            }
+
             instance.BaseAddress = new Uri(apiBaseUrl);
 
             // Get the frontend secret key from the manually loaded settings
             var secretKey = AppSettings.FrontendSecret;
             if (string.IsNullOrEmpty(secretKey))
             {
-                // This is a critical failure. The app cannot communicate with the backend.
                 throw new Exception("CRITICAL: FRONTEND_SECRET_KEY is not set. API calls will fail.");
             }
             else
             {
-                // Add the secret key as a default header for all requests
                 instance.DefaultRequestHeaders.Add("X-Frontend-Secret", secretKey);
             }
             return instance;

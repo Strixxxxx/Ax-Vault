@@ -13,6 +13,22 @@ using System.IdentityModel.Tokens.Jwt;
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
+// Smart .env loading: Only attempt to load if the file exists (Local machine)
+// On Render, environment variables are injected directly into the system.
+try
+{
+    var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+    if (File.Exists(envPath))
+    {
+        DotNetEnv.Env.Load(envPath);
+        Console.WriteLine("✅ Local .env file loaded successfully.");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"⚠️ Note: Could not load .env file: {ex.Message}");
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Register Security Services

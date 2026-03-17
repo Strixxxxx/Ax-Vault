@@ -110,11 +110,16 @@ public partial class Login : ContentView
         }
         catch (Exception ex)
         {
-            var message = ex.InnerException != null 
-                ? $"{ex.Message} (Inner: {ex.InnerException.Message})" 
-                : ex.Message;
+            // Specifically handle connection timeouts (Render Cold Start)
+            if (ex is TaskCanceledException || (ex is HttpRequestException && ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase)))
+            {
+                StatusLabel.Text = "Render is currently restarting, please try again after few seconds.";
+            }
+            else
+            {
+                StatusLabel.Text = $"Error: {ex.Message}";
+            }
             
-            StatusLabel.Text = $"Error: {message}";
             StatusLabel.IsVisible = true;
             LoginCompleted?.Invoke(this, new LoginSuccessEventArgs { Success = false });
         }
