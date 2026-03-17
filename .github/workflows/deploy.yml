@@ -17,7 +17,9 @@ jobs:
           gh api repos/${{ github.repository }}/actions/runs --paginate -q '.workflow_runs[].id' | \
           tail -n +51 | \
           xargs -I {} gh api repos/${{ github.repository }}/actions/runs/{} -X DELETE --silent || echo "No old runs to delete"
+
   deploy:
+    needs: cleanup
     runs-on: windows-latest
 
     steps:
@@ -49,11 +51,13 @@ jobs:
           JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
           JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
 
-      - name: Deploy to MonsterASP.NET via WebDeploy
+  - name: Deploy to MonsterASP.NET via WebDeploy
         shell: pwsh
         run: |
           $msdeploy = "C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe"
           $source = "contentPath='${{ github.workspace }}/publish'"
-          $dest = "contentPath='${{ secrets.MONSTER_SITE_NAME }}',ComputerName='${{ secrets.MONSTER_COMPUTER_NAME }}',UserName='${{ secrets.MONSTER_USERNAME }}',Password='${{ secrets.MONSTER_PASSWORD }}',AuthType='Basic'"
           
-          & $msdeploy -verb:sync -source:$source -dest:$dest -allowUntrusted  
+          # Use the EXACT names from your screenshot
+          $dest = "contentPath='${{ secrets.WEBDEPLOY_SITE }}',ComputerName='${{ secrets.WEBDEPLOY_SERVER }}',UserName='${{ secrets.WEBDEPLOY_USERNAME }}',Password='${{ secrets.WEBDEPLOY_PASSWORD }}',AuthType='Basic'"
+          
+          & $msdeploy -verb:sync -source:$source -dest:$dest -allowUntrusted
