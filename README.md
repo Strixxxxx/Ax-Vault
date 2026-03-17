@@ -26,7 +26,7 @@ This repository is a monorepo containing both the frontend and backend component
 | **Backend** | ASP.NET Core Web API, C# |
 | **Database** | PostgreSQL (Raw ADO.NET / Npgsql) |
 | **Security** | Argon2id, AES-256-GCM, JWT |
-| **DevOps** | GitHub Actions, MonsterASP.net |
+| **DevOps** | GitHub Actions, Render |
 
 ---
 
